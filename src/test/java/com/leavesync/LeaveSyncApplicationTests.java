@@ -1,10 +1,10 @@
-package com.leavesync.leavesync;
+package com.leavesync;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class LeavesyncApplicationTests {
+class LeaveSyncApplicationTests {
 
 	@Test
 	void contextLoads() {
