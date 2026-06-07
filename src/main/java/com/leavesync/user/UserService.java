@@ -2,13 +2,17 @@ package com.leavesync.user;
 
 import com.leavesync.entity.User;
 import com.leavesync.exception.ConflictException;
+import com.leavesync.exception.ForbiddenException;
+import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.exception.TokenException;
 import com.leavesync.repository.UserRepository;
+import com.leavesync.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -96,5 +100,72 @@ public class UserService {
         user.setInviteTokenExpiry(null);
 
         userRepository.save(user);
+    }
+
+    public List<UserResponse> getAllUsers(AuthenticatedUser principal) {
+
+        List<User> users = switch (principal.role()) {
+            case "ADMIN", "HR" -> userRepository.findAll();
+            case "MANAGER" -> {
+                User manager = userRepository.findById(principal.userId())
+                                .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.userId().toString()));
+
+                yield  userRepository.findByTeamId(manager.getTeamId());
+            }
+            default -> throw new ForbiddenException("You are not authorized to view this resource");
+        };
+
+        return users.stream()
+                .map(UserResponse::from)
+                .toList();
+    }
+
+    public UserResponse getUserById(UUID userId, AuthenticatedUser principal) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
+
+        switch (principal.role()) {
+            case "ADMIN", "HR" -> {}
+            case "MANAGER" -> {
+                User manager = userRepository.findById(principal.userId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.userId().toString()));
+
+                if (!manager.getTeamId().equals(user.getTeamId())) {
+                    throw new ForbiddenException("You are not authorized to view this resource");
+                }
+            }
+            case "EMPLOYEE" -> {
+                if (!user.getId().equals(principal.userId())) {
+                    throw new ForbiddenException("You are not authorized to view this resource");
+                }
+            }
+            default -> throw new ForbiddenException("You are not authorized to view this resource");
+        };
+
+        return UserResponse.from(user);
+    }
+
+    public UserResponse updateUser(UUID userId, UpdateUserRequest request) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
+
+        user.setFirstName(request.firstName());
+        user.setLastName(request.lastName());
+        user.setRole(request.role());
+        user.setTeamId(request.teamId());
+
+        return UserResponse.from(userRepository.save(user));
+    }
+
+    public UserResponse updateMobile(UpdateMobileRequest request, AuthenticatedUser principal) {
+
+        User user = userRepository.findById(principal.userId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.userId().toString()));
+
+        user.setMobileNumber(request.mobileNumber());
+
+        return UserResponse.from(userRepository.save(user));
     }
 }

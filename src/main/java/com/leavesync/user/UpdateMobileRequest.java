@@ -1,4 +1,11 @@
 package com.leavesync.user;
 
-public record UpdateMobileRequest() {
+import jakarta.validation.constraints.NotBlank;
+
+public record UpdateMobileRequest(
+
+        @NotBlank(message = "Mobile number is required")
+        String mobileNumber
+
+) {
 }
