@@ -28,4 +28,29 @@ public class UserController {
         UserResponse response = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PostMapping("/accept-invite")
+    public ResponseEntity<Void> acceptInvite(
+            @Valid @RequestBody AcceptInviteRequest request
+    ) {
+        userService.acceptInvite(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+        userService.forgotPassword(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+        userService.resetPassword(request);
+        return ResponseEntity.noContent().build();
+    }
+
 }

@@ -11,4 +11,8 @@ public class EmailService {
         log.info("INVITE EMAIL -> To: {}, Name: {}, Token: {}", toEmail, firstName, inviteToken);
     }
 
+    public void sendPasswordResetEmail(String toEmail, String firstName, String resetToken) {
+        log.info("PASSWORD RESET EMAIL -> To: {}, Name: {}, Token: {}", toEmail, firstName, resetToken);
+    }
+
 }
