@@ -1,18 +1,82 @@
 package com.leavesync.user;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
+@RequiredArgsConstructor
 public class EmailService {
 
+    private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.from}")
+    private String from;
+
     public void sendInviteEmail(String toEmail, String firstName, String inviteToken) {
-        log.info("INVITE EMAIL -> To: {}, Name: {}, Token: {}", toEmail, firstName, inviteToken);
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(toEmail);
+        message.setSubject("Invitation to Join LeaveSync");
+        message.setText("Hi " + firstName + ",\n\n"
+                + "You have been invited to join LeaveSync.\n\n"
+                + "Your account has been created. Click the link below to accept the invitation and set the password:\n\n"
+                + inviteToken + "\n\n"
+                + "This invitation is valid for 72 hours.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
     }
 
     public void sendPasswordResetEmail(String toEmail, String firstName, String resetToken) {
-        log.info("PASSWORD RESET EMAIL -> To: {}, Name: {}, Token: {}", toEmail, firstName, resetToken);
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(toEmail);
+        message.setSubject("Password Reset Request");
+        message.setText("Hi " + firstName + ",\n\n"
+                + "You have requested to reset your password. Click the link below to set a new password:\n\n"
+                + resetToken + "\n\n"
+                + "This link is valid for 1 hour. If you did not request this, please ignore this email.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendWelcomeEmail(String toEmail, String firstName) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(toEmail);
+        message.setSubject("Welcome to LeaveSync");
+        message.setText("Hi " + firstName + ",\n\n"
+                + "Thank you for joining LeaveSync. We are excited to have you on board.\n\n"
+                + "Your account is now active. You can log in and start managing your leave.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendDeboardingEmail (String toEmail, String firstName) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(toEmail);
+        message.setSubject("Goodbye from LeaveSync");
+        message.setText("Hi " + firstName + ",\n\n"
+                + "Thank you for being part of LeaveSync. We wish you all the best.\n\n"
+                + "Your LeaveSync account has been deactivated by an administrator.\n\n"
+                + "If you believe this is a mistake, please contact your HR team.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
     }
 
 }

@@ -1,17 +1,26 @@
 package com.leavesync.user;
 
+import com.leavesync.entity.AuditLog;
+import com.leavesync.entity.LeaveRequest;
 import com.leavesync.entity.User;
+import com.leavesync.enums.LeaveStatus;
+import com.leavesync.exception.BusinessRuleException;
 import com.leavesync.exception.ConflictException;
 import com.leavesync.exception.ForbiddenException;
 import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.exception.TokenException;
+import com.leavesync.repository.AuditLogRepository;
+import com.leavesync.repository.LeaveRequestRepository;
 import com.leavesync.repository.UserRepository;
 import com.leavesync.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +32,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final AuditLogRepository auditLogRepository;
 
     public UserResponse createUser(CreateUserRequest request) {
 
@@ -65,6 +76,8 @@ public class UserService {
         user.setInviteTokenExpiry(null);
 
         userRepository.save(user);
+
+        emailService.sendWelcomeEmail(user.getEmail(), user.getFirstName());
     }
 
     public void forgotPassword(ForgotPasswordRequest request) {
@@ -168,4 +181,46 @@ public class UserService {
 
         return UserResponse.from(userRepository.save(user));
     }
+
+    @Transactional
+    public UserResponse deactivateUser(UUID userId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
+
+        if (!user.isActive()) {
+            throw new BusinessRuleException("User is already deactivated");
+        }
+
+        List<LeaveRequest> pendingRequest = leaveRequestRepository.findByUserIdAndStatus(userId, LeaveStatus.PENDING);
+
+        List<LeaveRequest> approvedRequest = leaveRequestRepository
+                .findByUserIdAndStatusAndEndDateGreaterThanEqual(userId, LeaveStatus.APPROVED, LocalDate.now());
+
+        List<LeaveRequest> requestToCancel = new ArrayList<>();
+        requestToCancel.addAll(pendingRequest);
+        requestToCancel.addAll(approvedRequest);
+
+        for (LeaveRequest request : requestToCancel) {
+            LeaveStatus previousStatus = request.getStatus();
+            request.setStatus(LeaveStatus.CANCELLED);
+            leaveRequestRepository.save(request);
+
+            AuditLog auditLog = new AuditLog();
+            auditLog.setLeaveRequestId(request.getId());
+            auditLog.setPreviousStatus(previousStatus);
+            auditLog.setNewStatus(LeaveStatus.CANCELLED);
+            auditLog.setActionedBy(null);
+            auditLog.setNotes("User account deactivated");
+            auditLogRepository.save(auditLog);
+        }
+
+        user.setActive(false);
+        User deactivatedUser = userRepository.save(user);
+
+        emailService.sendDeboardingEmail(user.getEmail(), user.getFirstName());
+
+        return UserResponse.from(deactivatedUser);
+    }
+
 }

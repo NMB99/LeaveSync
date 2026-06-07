@@ -85,4 +85,12 @@ public class UserController {
         return ResponseEntity.ok(userService.updateMobile(request, principal));
     }
 
+    @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponse> deactivateUser(
+            @PathVariable UUID id
+    ) {
+        return ResponseEntity.ok(userService.deactivateUser(id));
+    }
+
 }
