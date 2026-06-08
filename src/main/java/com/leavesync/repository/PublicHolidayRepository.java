@@ -4,6 +4,7 @@ import com.leavesync.entity.PublicHoliday;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,5 +12,7 @@ import java.util.UUID;
 public interface PublicHolidayRepository extends JpaRepository<PublicHoliday, UUID> {
 
     List<PublicHoliday> findByRegion(String region);
+
+    List<PublicHoliday> findByRegionAndDateBetween(String region, LocalDate from, LocalDate to);
 
 }
