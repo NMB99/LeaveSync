@@ -22,7 +22,7 @@ public class WorkingDayController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
-        return ResponseEntity.ok(workingDayService.countWorkingDays(from, to));
+        return ResponseEntity.ok(workingDayService.totalWorkingDaysResponse(from, to));
     }
 
 }

@@ -1,6 +1,7 @@
 package com.leavesync.repository;
 
 import com.leavesync.entity.User;
+import com.leavesync.enums.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -19,4 +20,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     List<User> findByTeamId(UUID teamId);
 
+    Optional<User> findFirstByRoleAndIsActiveTrue(Role role);
 }

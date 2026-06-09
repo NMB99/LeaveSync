@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Set;
@@ -20,7 +21,11 @@ public class WorkingDayService {
     @Value("${leavesync.default-region}")
     private String defaultRegion;
 
-    public WorkingDayResponse countWorkingDays (LocalDate from, LocalDate to) {
+    public WorkingDayResponse totalWorkingDaysResponse (LocalDate from, LocalDate to) {
+        return new WorkingDayResponse(from, to, countWorkingDays(from, to));
+    }
+
+    public BigDecimal countWorkingDays (LocalDate from, LocalDate to) {
 
         Set<LocalDate> publicHolidays = publicHolidayRepository
                 .findByRegionAndDateBetween(defaultRegion, from, to)
@@ -43,6 +48,6 @@ public class WorkingDayService {
             current = current.plusDays(1);
         }
 
-        return new WorkingDayResponse(from, to, count);
+        return BigDecimal.valueOf(count);
     }
 }

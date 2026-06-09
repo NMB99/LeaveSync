@@ -2,5 +2,11 @@ package com.leavesync.security;
 
 import java.util.UUID;
 
-public record AuthenticatedUser(UUID userId, String email, String role) {
+public record AuthenticatedUser(
+
+        UUID userId,
+        String email,
+        String role
+
+) {
 }
