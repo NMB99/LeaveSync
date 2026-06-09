@@ -3,9 +3,12 @@ package com.leavesync.leaverequest;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
 import com.leavesync.enums.Role;
+import com.leavesync.exception.ForbiddenException;
 import com.leavesync.exception.InvalidLeaveRequestException;
+import com.leavesync.exception.LeaveRequestStateException;
 import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.repository.*;
+import com.leavesync.security.AuthenticatedUser;
 import com.leavesync.user.EmailService;
 import com.leavesync.workingday.WorkingDayService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +30,7 @@ public class LeaveRequestService {
     private final LeaveTypeRepository leaveTypeRepository;
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
+    private final AuditLogRepository auditLogRepository;
     private final WorkingDayService workingDayService;
     private final EmailService emailService;
 
@@ -132,6 +136,94 @@ public class LeaveRequestService {
         );
 
         return LeaveRequestResponse.from(leaveRequest, balanceWarning);
+    }
+
+    public List<LeaveRequestResponse> getLeaveRequests(AuthenticatedUser principal) {
+
+        List<LeaveRequest> requests = switch (principal.role()) {
+            case EMPLOYEE -> leaveRequestRepository.findByUserId(principal.userId());
+            case MANAGER -> {
+                User manager = userRepository.findById(principal.userId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id:", principal.userId().toString()));
+                List<User> teamMembers = userRepository.findByTeamId(manager.getTeamId());
+                yield leaveRequestRepository.findByUserIdIn(
+                        teamMembers
+                                .stream()
+                                .map(User::getId)
+                                .toList()
+                );
+            }
+            case HR, ADMIN -> leaveRequestRepository.findAll();
+        };
+
+        return requests.stream()
+                .map(LeaveRequestResponse::from)
+                .toList();
+    }
+
+    public LeaveRequestResponse getLeaveRequestById(AuthenticatedUser principal, UUID requestId) {
+
+        LeaveRequest request = leaveRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveRequest", "id:", requestId.toString()));
+
+        switch (principal.role()) {
+            case EMPLOYEE -> {
+                if (!request.getUserId().equals(principal.userId())) {
+                    throw new ForbiddenException("You are not authorized to view this leave request");
+                }
+            }
+            case MANAGER -> {
+                User requestOwner = userRepository.findById(request.getUserId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id:", request.getUserId().toString()));
+                User manager = userRepository.findById(principal.userId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id:", principal.userId().toString()));
+                if (requestOwner.getTeamId() == null || !requestOwner.getTeamId().equals(manager.getTeamId())) {
+                    throw new ForbiddenException("You are not authorized to view this leave request outside your team");
+                }
+            }
+            case HR, ADMIN -> {}
+        }
+
+        return LeaveRequestResponse.from(request);
+    }
+
+    @Transactional
+    public LeaveRequestResponse cancelLeaveRequest(AuthenticatedUser principal, UUID requestId) {
+
+        LeaveRequest request = leaveRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveRequest", "id:", requestId.toString()));
+
+        if (!request.getUserId().equals(principal.userId())) {
+            throw new ForbiddenException("You can cancel your own leave request");
+        }
+
+        if (request.getStatus() != LeaveStatus.PENDING) {
+            throw new LeaveRequestStateException("Only PENDING leave requests can be cancelled");
+        }
+
+        request.setStatus(LeaveStatus.CANCELLED);
+        leaveRequestRepository.save(request);
+
+        LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveType not found"));
+
+        if (leaveType.isRequiresBalanceTracking()) {
+            int year = request.getStartDate().getYear();
+            LeaveBalance balance = leaveBalanceRepository.findByUserIdAndYear(request.getUserId(), year)
+                    .orElseThrow(() -> new ResourceNotFoundException("Leave balance not found for user in " + year));
+            balance.setPendingDays(balance.getPendingDays().subtract(request.getTotalWorkingDays()));
+            leaveBalanceRepository.save(balance);
+        }
+
+        AuditLog newLog = new AuditLog();
+        newLog.setLeaveRequestId(request.getId());
+        newLog.setPreviousStatus(LeaveStatus.PENDING);
+        newLog.setNewStatus(LeaveStatus.CANCELLED);
+        newLog.setActionedBy(principal.userId());
+        newLog.setNotes("Leave request cancelled by " + principal.email());
+        auditLogRepository.save(newLog);
+
+        return LeaveRequestResponse.from(request);
     }
 
     private Optional<User> findLeaveRequestApprover (User submitter) {

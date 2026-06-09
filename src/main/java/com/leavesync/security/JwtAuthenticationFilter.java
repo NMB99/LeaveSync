@@ -1,5 +1,6 @@
 package com.leavesync.security;
 
+import com.leavesync.enums.Role;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String email = jwtService.extractEmail(token);
-        String role = jwtService.extractRole(token);
+        Role role = Role.valueOf(jwtService.extractRole(token));
         UUID userId = jwtService.extractUserId(token);
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(

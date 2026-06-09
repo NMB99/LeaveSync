@@ -5,6 +5,7 @@ import com.leavesync.entity.LeaveBalance;
 import com.leavesync.entity.LeaveRequest;
 import com.leavesync.entity.User;
 import com.leavesync.enums.LeaveStatus;
+import com.leavesync.enums.Role;
 import com.leavesync.exception.BusinessRuleException;
 import com.leavesync.exception.ConflictException;
 import com.leavesync.exception.ForbiddenException;
@@ -47,6 +48,10 @@ public class UserService {
 
         if (userRepository.existsByEmail(request.email())) {
             throw new ConflictException("User already exists with email: " + request.email());
+        }
+
+        if ((request.role() == Role.EMPLOYEE || request.role() == Role.MANAGER) && request.teamId() == null) {
+            throw new BusinessRuleException("Team ID is required for employee and manager roles");
         }
 
         String inviteToken = UUID.randomUUID().toString();
@@ -138,8 +143,8 @@ public class UserService {
     public List<UserResponse> getAllUsers(AuthenticatedUser principal) {
 
         List<User> users = switch (principal.role()) {
-            case "ADMIN", "HR" -> userRepository.findAll();
-            case "MANAGER" -> {
+            case ADMIN, HR -> userRepository.findAll();
+            case MANAGER -> {
                 User manager = userRepository.findById(principal.userId())
                                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.userId().toString()));
 
@@ -159,8 +164,8 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
 
         switch (principal.role()) {
-            case "ADMIN", "HR" -> {}
-            case "MANAGER" -> {
+            case ADMIN, HR -> {}
+            case MANAGER -> {
                 User manager = userRepository.findById(principal.userId())
                         .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.userId().toString()));
 
@@ -168,7 +173,7 @@ public class UserService {
                     throw new ForbiddenException("You are not authorized to view this resource");
                 }
             }
-            case "EMPLOYEE" -> {
+            case EMPLOYEE -> {
                 if (!user.getId().equals(principal.userId())) {
                     throw new ForbiddenException("You are not authorized to view this resource");
                 }
