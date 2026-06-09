@@ -6,6 +6,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 public class EmailService {
@@ -73,6 +75,33 @@ public class EmailService {
                 + "Thank you for being part of LeaveSync. We wish you all the best.\n\n"
                 + "Your LeaveSync account has been deactivated by an administrator.\n\n"
                 + "If you believe this is a mistake, please contact your HR team.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendLeaveRequestEmailToApprover (
+            String approverEmail,
+            String approverFirstName,
+            String employeeFullName,
+            String leaveType,
+            String startDate,
+            String endDate,
+            BigDecimal workingDays
+    ) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(approverEmail);
+        message.setSubject("New Leave Request: Action Required");
+        message.setText("Hi " + approverFirstName + ",\n\n"
+                + employeeFullName + " has submitted a leave request for your review\n\n"
+                + "Leave Type: " + leaveType + "\n"
+                + "From: " + startDate + "\n"
+                + "To: " + endDate + "\n"
+                + "Working Days: " + workingDays + "\n\n"
+                + "Please log in to LeaveSync to approve or reject this request.\n\n"
                 + "The LeaveSync team"
         );
 

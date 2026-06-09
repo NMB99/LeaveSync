@@ -1,23 +1,29 @@
 package com.leavesync.user;
 
 import com.leavesync.entity.AuditLog;
+import com.leavesync.entity.LeaveBalance;
 import com.leavesync.entity.LeaveRequest;
 import com.leavesync.entity.User;
 import com.leavesync.enums.LeaveStatus;
+import com.leavesync.enums.Role;
 import com.leavesync.exception.BusinessRuleException;
 import com.leavesync.exception.ConflictException;
 import com.leavesync.exception.ForbiddenException;
 import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.exception.TokenException;
 import com.leavesync.repository.AuditLogRepository;
+import com.leavesync.repository.LeaveBalanceRepository;
 import com.leavesync.repository.LeaveRequestRepository;
 import com.leavesync.repository.UserRepository;
 import com.leavesync.security.AuthenticatedUser;
+import com.leavesync.workingday.WorkingDayService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -34,11 +40,18 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final LeaveRequestRepository leaveRequestRepository;
     private final AuditLogRepository auditLogRepository;
+    private final LeaveBalanceRepository leaveBalanceRepository;
+    private final WorkingDayService workingDayService;
 
+    @Transactional
     public UserResponse createUser(CreateUserRequest request) {
 
         if (userRepository.existsByEmail(request.email())) {
             throw new ConflictException("User already exists with email: " + request.email());
+        }
+
+        if ((request.role() == Role.EMPLOYEE || request.role() == Role.MANAGER) && request.teamId() == null) {
+            throw new BusinessRuleException("Team ID is required for employee and manager roles");
         }
 
         String inviteToken = UUID.randomUUID().toString();
@@ -57,6 +70,18 @@ public class UserService {
         user.setInviteTokenExpiry(inviteTokenExpiry);
 
         User savedUser = userRepository.save(user);
+
+        LeaveBalance balance = new LeaveBalance();
+        balance.setUserId(savedUser.getId());
+        balance.setYear(LocalDate.now().getYear());
+
+        BigDecimal entitlement = calculateProRatedEntitlement(LocalDate.now());
+        balance.setTotalEntitlement(entitlement);
+        balance.setCarriedOver(BigDecimal.ZERO);
+        balance.setLeaveUsed(BigDecimal.ZERO);
+        balance.setPendingDays(BigDecimal.ZERO);
+        leaveBalanceRepository.save(balance);
+
         emailService.sendInviteEmail(savedUser.getEmail(), savedUser.getFirstName(), inviteToken);
 
         return UserResponse.from(savedUser);
@@ -118,8 +143,8 @@ public class UserService {
     public List<UserResponse> getAllUsers(AuthenticatedUser principal) {
 
         List<User> users = switch (principal.role()) {
-            case "ADMIN", "HR" -> userRepository.findAll();
-            case "MANAGER" -> {
+            case ADMIN, HR -> userRepository.findAll();
+            case MANAGER -> {
                 User manager = userRepository.findById(principal.userId())
                                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.userId().toString()));
 
@@ -139,8 +164,8 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
 
         switch (principal.role()) {
-            case "ADMIN", "HR" -> {}
-            case "MANAGER" -> {
+            case ADMIN, HR -> {}
+            case MANAGER -> {
                 User manager = userRepository.findById(principal.userId())
                         .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.userId().toString()));
 
@@ -148,7 +173,7 @@ public class UserService {
                     throw new ForbiddenException("You are not authorized to view this resource");
                 }
             }
-            case "EMPLOYEE" -> {
+            case EMPLOYEE -> {
                 if (!user.getId().equals(principal.userId())) {
                     throw new ForbiddenException("You are not authorized to view this resource");
                 }
@@ -221,6 +246,24 @@ public class UserService {
         emailService.sendDeboardingEmail(user.getEmail(), user.getFirstName());
 
         return UserResponse.from(deactivatedUser);
+    }
+
+    private BigDecimal calculateProRatedEntitlement(LocalDate joiningDate) {
+
+        LocalDate startYear = LocalDate.of(joiningDate.getYear(), 1, 1);
+        LocalDate endYear = LocalDate.of(joiningDate.getYear(), 12, 31);
+
+        BigDecimal totalWorkingDays = workingDayService.countWorkingDays(startYear, endYear);
+        BigDecimal remainingWorkingDays = workingDayService.countWorkingDays(joiningDate, endYear);
+
+        BigDecimal proRatedEntitlement = remainingWorkingDays
+                .multiply(new BigDecimal("25"))
+                .divide(totalWorkingDays, 10, RoundingMode.HALF_UP);
+
+        return proRatedEntitlement
+                .multiply(new BigDecimal("2"))
+                .setScale(0, RoundingMode.CEILING)
+                .divide(new BigDecimal("2"), 1, RoundingMode.UNNECESSARY);
     }
 
 }
