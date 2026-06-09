@@ -3,6 +3,7 @@ package com.leavesync.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -100,6 +101,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthorizationDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAuthorizationDenied(AuthorizationDeniedException ex) {
         return build(HttpStatus.FORBIDDEN, "Access Denied", "You do not have permission to perform this action");
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ErrorResponse> handleDisabledException(DisabledException ex) {
+        return build(HttpStatus.FORBIDDEN, "Account Disabled", "Your account has been deactivated.");
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String error, String message) {
