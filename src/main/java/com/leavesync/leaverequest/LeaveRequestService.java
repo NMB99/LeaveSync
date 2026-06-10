@@ -123,7 +123,7 @@ public class LeaveRequestService {
 
         final BigDecimal finalRequestedDays = requestedDays;
 
-        findLeaveRequestApprover(submitter).ifPresent(approver ->
+        findLeaveRequestApprover(submitter, leaveType).ifPresent(approver ->
                 emailService.sendLeaveRequestEmailToApprover(
                         approver.getEmail(),
                         approver.getFirstName(),
@@ -226,7 +226,11 @@ public class LeaveRequestService {
         return LeaveRequestResponse.from(request);
     }
 
-    private Optional<User> findLeaveRequestApprover (User submitter) {
+    private Optional<User> findLeaveRequestApprover (User submitter, LeaveType leaveType) {
+
+        if (leaveType.isRequiresHrApproval() && (submitter.getRole() == Role.EMPLOYEE || submitter.getRole() == Role.MANAGER)) {
+            return userRepository.findFirstByRoleAndIsActiveTrue(Role.HR);
+        }
 
         return switch (submitter.getRole()) {
             case EMPLOYEE -> {
