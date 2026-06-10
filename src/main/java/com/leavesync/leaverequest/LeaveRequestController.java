@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,4 +54,26 @@ public class LeaveRequestController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(leaveRequestService.cancelLeaveRequest(principal, id));
     }
+
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
+    public ResponseEntity<LeaveRequestResponse> approveLeaveRequest(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable UUID id
+    ) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(leaveRequestService.approveLeaveRequest(principal, id));
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
+    public ResponseEntity<LeaveRequestResponse> rejectLeaveRequest(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable UUID id,
+            @Valid @RequestBody RejectLeaveRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(leaveRequestService.rejectLeaveRequest(principal, id, request));
+    }
+
 }

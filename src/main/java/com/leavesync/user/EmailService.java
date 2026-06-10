@@ -96,12 +96,59 @@ public class EmailService {
         message.setTo(approverEmail);
         message.setSubject("New Leave Request: Action Required");
         message.setText("Hi " + approverFirstName + ",\n\n"
-                + employeeFullName + " has submitted a leave request for your review\n\n"
+                + employeeFullName + " has submitted a leave request for your review.\n\n"
                 + "Leave Type: " + leaveType + "\n"
                 + "From: " + startDate + "\n"
                 + "To: " + endDate + "\n"
                 + "Working Days: " + workingDays + "\n\n"
                 + "Please log in to LeaveSync to approve or reject this request.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendLeaveApprovalEmail (
+            String toEmail,
+            String firstName,
+            String leaveType,
+            String startDate,
+            String endDate
+    ) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(toEmail);
+        message.setSubject("Leave Request Approved");
+        message.setText("Hi " + firstName + ",\n\n"
+                + "Your " + leaveType + " leave has been approved.\n\n"
+                + "From: " + startDate +"\n"
+                + "To: " + endDate + "\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendLeaveRejectionEmail (
+            String toEmail,
+            String firstName,
+            String leaveType,
+            String startDate,
+            String endDate,
+            String reason
+    ) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(toEmail);
+        message.setSubject("Leave Request Rejected");
+        message.setText("Hi " + firstName + ",\n\n"
+                + "Your " + leaveType + " leave has been rejected.\n\n"
+                + "From: " + startDate +"\n"
+                + "To: " + endDate + "\n"
+                + "Reason: " + reason + "\n\n"
+                + "If you have any questions, please contact your manager.\n\n"
                 + "The LeaveSync team"
         );
 
