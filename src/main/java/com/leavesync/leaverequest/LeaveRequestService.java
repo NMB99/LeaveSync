@@ -123,7 +123,7 @@ public class LeaveRequestService {
 
         final BigDecimal finalRequestedDays = requestedDays;
 
-        findLeaveRequestApprover(submitter).ifPresent(approver ->
+        findLeaveRequestApprover(submitter, leaveType).ifPresent(approver ->
                 emailService.sendLeaveRequestEmailToApprover(
                         approver.getEmail(),
                         approver.getFirstName(),
@@ -201,11 +201,14 @@ public class LeaveRequestService {
             throw new LeaveRequestStateException("Only PENDING leave requests can be cancelled");
         }
 
+        LeaveStatus previousStatus = request.getStatus();
+
         request.setStatus(LeaveStatus.CANCELLED);
+        request.setActionedBy(principal.userId());
         leaveRequestRepository.save(request);
 
         LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
-                .orElseThrow(() -> new ResourceNotFoundException("LeaveType not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveType", "id:", request.getLeaveTypeId().toString()));
 
         if (leaveType.isRequiresBalanceTracking()) {
             int year = request.getStartDate().getYear();
@@ -217,7 +220,7 @@ public class LeaveRequestService {
 
         AuditLog newLog = new AuditLog();
         newLog.setLeaveRequestId(request.getId());
-        newLog.setPreviousStatus(LeaveStatus.PENDING);
+        newLog.setPreviousStatus(previousStatus);
         newLog.setNewStatus(LeaveStatus.CANCELLED);
         newLog.setActionedBy(principal.userId());
         newLog.setNotes("Leave request cancelled by " + principal.email());
@@ -226,7 +229,105 @@ public class LeaveRequestService {
         return LeaveRequestResponse.from(request);
     }
 
-    private Optional<User> findLeaveRequestApprover (User submitter) {
+    @Transactional
+    public LeaveRequestResponse approveLeaveRequest(AuthenticatedUser principal, UUID requestId) {
+
+        LeaveRequest request = leaveRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveRequest", "id:", requestId.toString()));
+
+        LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveType", "id:", request.getLeaveTypeId().toString()));
+
+        validateApprovalPermission(principal, request, leaveType);
+
+        LeaveStatus previousStatus = request.getStatus();
+
+        request.setStatus(LeaveStatus.APPROVED);
+        request.setActionedBy(principal.userId());
+        leaveRequestRepository.save(request);
+
+        if (leaveType.isRequiresBalanceTracking()) {
+            int year = request.getStartDate().getYear();
+            LeaveBalance balance = leaveBalanceRepository.findByUserIdAndYear(request.getUserId(), year)
+                    .orElseThrow(() -> new ResourceNotFoundException("Leave balance not found for user in " + year));
+            balance.setLeaveUsed(balance.getLeaveUsed().add(request.getTotalWorkingDays()));
+            balance.setPendingDays(balance.getPendingDays().subtract(request.getTotalWorkingDays()));
+            leaveBalanceRepository.save(balance);
+        }
+
+        AuditLog newLog = new AuditLog();
+        newLog.setLeaveRequestId(request.getId());
+        newLog.setPreviousStatus(previousStatus);
+        newLog.setNewStatus(LeaveStatus.APPROVED);
+        newLog.setActionedBy(principal.userId());
+        newLog.setNotes("Leave request approved by " + principal.email());
+        auditLogRepository.save(newLog);
+
+        User requester = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id:", request.getUserId().toString()));
+        emailService.sendLeaveApprovalEmail(
+                requester.getEmail(),
+                requester.getFirstName(),
+                leaveType.getName(),
+                request.getStartDate().toString(),
+                request.getEndDate().toString()
+        );
+
+        return LeaveRequestResponse.from(request);
+    }
+
+    @Transactional
+    public LeaveRequestResponse rejectLeaveRequest(AuthenticatedUser principal, UUID requestId, RejectLeaveRequest rejectRequest) {
+
+        LeaveRequest request = leaveRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveRequest", "id:", requestId.toString()));
+
+        LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveType", "id:", request.getLeaveTypeId().toString()));
+
+        validateApprovalPermission(principal, request, leaveType);
+
+        LeaveStatus previousStatus = request.getStatus();
+
+        request.setStatus(LeaveStatus.REJECTED);
+        request.setActionedBy(principal.userId());
+        leaveRequestRepository.save(request);
+
+        if (leaveType.isRequiresBalanceTracking()) {
+            int year = request.getStartDate().getYear();
+            LeaveBalance balance = leaveBalanceRepository.findByUserIdAndYear(request.getUserId(), year)
+                    .orElseThrow(() -> new ResourceNotFoundException("Leave balance not found for user in " + year));
+            balance.setPendingDays(balance.getPendingDays().subtract(request.getTotalWorkingDays()));
+            leaveBalanceRepository.save(balance);
+        }
+
+        AuditLog newLog = new AuditLog();
+        newLog.setLeaveRequestId(request.getId());
+        newLog.setPreviousStatus(previousStatus);
+        newLog.setNewStatus(LeaveStatus.REJECTED);
+        newLog.setActionedBy(principal.userId());
+        newLog.setNotes("Leave request rejected by " + principal.email() + ". Reason: " + rejectRequest.reason());
+        auditLogRepository.save(newLog);
+
+        User requester = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id:", request.getUserId().toString()));
+        emailService.sendLeaveRejectionEmail(
+                requester.getEmail(),
+                requester.getFirstName(),
+                leaveType.getName(),
+                request.getStartDate().toString(),
+                request.getEndDate().toString(),
+                rejectRequest.reason()
+        );
+
+        return LeaveRequestResponse.from(request);
+    }
+
+    private Optional<User> findLeaveRequestApprover(User submitter, LeaveType leaveType) {
+
+        if (leaveType.isRequiresHrApproval() && (submitter.getRole() == Role.EMPLOYEE || submitter.getRole() == Role.MANAGER)) {
+            return userRepository.findFirstByRoleAndIsActiveTrue(Role.HR);
+        }
 
         return switch (submitter.getRole()) {
             case EMPLOYEE -> {
@@ -250,5 +351,40 @@ public class LeaveRequestService {
             case HR -> userRepository.findFirstByRoleAndIsActiveTrue(Role.ADMIN);
             case ADMIN -> userRepository.findFirstByRoleAndIsActiveTrue(Role.HR);
         };
+    }
+
+    private void validateApprovalPermission(AuthenticatedUser approver, LeaveRequest request, LeaveType leaveType) {
+
+        if (request.getUserId().equals(approver.userId())) {
+            throw new ForbiddenException("You cannot action your own leave request");
+        }
+
+        if (request.getStatus() != LeaveStatus.PENDING && request.getStatus() != LeaveStatus.ESCALATED) {
+            throw new LeaveRequestStateException("Only PENDING or ESCALATED leave requests can be actioned");
+        }
+
+        switch (approver.role()) {
+            case MANAGER -> {
+                if (leaveType.isRequiresHrApproval()) {
+                    throw new ForbiddenException("This leave type requires HR approval");
+                }
+                User requester = userRepository.findById(request.getUserId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id:", request.getUserId().toString()));
+                User manager = userRepository.findById(approver.userId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id:", approver.userId().toString()));
+                if (requester.getTeamId() == null || !requester.getTeamId().equals(manager.getTeamId())) {
+                    throw new ForbiddenException("You can only action leave requests for your team");
+                }
+            }
+            case HR -> {}
+            case ADMIN -> {
+                User requester = userRepository.findById(request.getUserId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User", "id:", request.getUserId().toString()));
+                if (requester.getRole() != Role.HR) {
+                    throw new ForbiddenException("Admins can only action HR leave requests");
+                }
+            }
+            case EMPLOYEE -> throw new ForbiddenException("You dont have permission to action leave requests");
+        }
     }
 }
