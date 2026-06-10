@@ -45,7 +45,7 @@ public class LeaveRequestController {
                 .body(leaveRequestService.getLeaveRequestById(principal, id));
     }
 
-    @DeleteMapping("/{id}")
+    @PostMapping("/{id}/cancel")
     public ResponseEntity<LeaveRequestResponse> cancelLeaveRequest(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @PathVariable UUID id
