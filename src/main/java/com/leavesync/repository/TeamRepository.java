@@ -14,4 +14,5 @@ public interface TeamRepository extends JpaRepository<Team, UUID> {
 
     boolean existsByManagerId(UUID managerId);
 
+    boolean existsByName(String name);
 }
