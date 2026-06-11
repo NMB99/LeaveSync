@@ -23,4 +23,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findFirstByRoleAndIsActiveTrue(Role role);
 
     boolean existsByTeamId(UUID teamId);
+
+
+    List<User> findByTeamIdIn(List<UUID> teamIds);
 }

@@ -1,9 +1,6 @@
 package com.leavesync.user;
 
-import com.leavesync.entity.AuditLog;
-import com.leavesync.entity.LeaveBalance;
-import com.leavesync.entity.LeaveRequest;
-import com.leavesync.entity.User;
+import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
 import com.leavesync.enums.Role;
 import com.leavesync.exception.BusinessRuleException;
@@ -11,10 +8,7 @@ import com.leavesync.exception.ConflictException;
 import com.leavesync.exception.ForbiddenException;
 import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.exception.TokenException;
-import com.leavesync.repository.AuditLogRepository;
-import com.leavesync.repository.LeaveBalanceRepository;
-import com.leavesync.repository.LeaveRequestRepository;
-import com.leavesync.repository.UserRepository;
+import com.leavesync.repository.*;
 import com.leavesync.security.AuthenticatedUser;
 import com.leavesync.workingday.WorkingDayService;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +35,7 @@ public class UserService {
     private final LeaveRequestRepository leaveRequestRepository;
     private final AuditLogRepository auditLogRepository;
     private final LeaveBalanceRepository leaveBalanceRepository;
+    private final TeamRepository teamRepository;
     private final WorkingDayService workingDayService;
 
     @Transactional
@@ -50,8 +45,8 @@ public class UserService {
             throw new ConflictException("User already exists with email: " + request.email());
         }
 
-        if ((request.role() == Role.EMPLOYEE || request.role() == Role.MANAGER) && request.teamId() == null) {
-            throw new BusinessRuleException("Team ID is required for employee and manager roles");
+        if (request.role() == Role.EMPLOYEE && request.teamId() == null) {
+            throw new BusinessRuleException("Team ID is required for employee role");
         }
 
         String inviteToken = UUID.randomUUID().toString();
@@ -145,10 +140,12 @@ public class UserService {
         List<User> users = switch (principal.role()) {
             case ADMIN, HR -> userRepository.findAll();
             case MANAGER -> {
-                User manager = userRepository.findById(principal.userId())
-                                .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.userId().toString()));
+                List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
+                        .stream()
+                        .map(Team::getId)
+                        .toList();
 
-                yield  userRepository.findByTeamId(manager.getTeamId());
+                yield  userRepository.findByTeamIdIn(teamIds);
             }
             default -> throw new ForbiddenException("You are not authorized to view this resource");
         };
@@ -166,10 +163,12 @@ public class UserService {
         switch (principal.role()) {
             case ADMIN, HR -> {}
             case MANAGER -> {
-                User manager = userRepository.findById(principal.userId())
-                        .orElseThrow(() -> new ResourceNotFoundException("User", "id", principal.userId().toString()));
+                List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
+                        .stream()
+                        .map(Team::getId)
+                        .toList();
 
-                if (!manager.getTeamId().equals(user.getTeamId())) {
+                if (!teamIds.contains(user.getTeamId())) {
                     throw new ForbiddenException("You are not authorized to view this resource");
                 }
             }
@@ -212,6 +211,10 @@ public class UserService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId.toString()));
+
+        if (teamRepository.existsByManagerId(userId)) {
+            throw new BusinessRuleException("Cannot deactivate user - they are currently managing a team. Reassign the team first.");
+        }
 
         if (!user.isActive()) {
             throw new BusinessRuleException("User is already deactivated");
