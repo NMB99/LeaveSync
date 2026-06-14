@@ -110,6 +110,8 @@ public class LeaveRequestService {
             balanceWarning = requestedDays.compareTo(remaining) > 0;
         }
 
+        ApproverResult approverResult = findLeaveRequestApprover(submitter, leaveType);
+
         LeaveRequest leaveRequest = new LeaveRequest();
         leaveRequest.setUserId(userId);
         leaveRequest.setLeaveTypeId(request.leaveTypeId());
@@ -118,11 +120,23 @@ public class LeaveRequestService {
         leaveRequest.setHalfDay(request.isHalfDay());
         leaveRequest.setReason(request.reason());
         leaveRequest.setTotalWorkingDays(requestedDays);
-        leaveRequest.setStatus(LeaveStatus.PENDING);
+        leaveRequest.setStatus(
+                approverResult.rerouted() ? LeaveStatus.REROUTED_TO_HR : LeaveStatus.PENDING
+        );
         leaveRequest.setNoticePeriodWarning(noticePeriodWarning);
         leaveRequest.setOverlapWarning(overlapWarning);
 
         leaveRequestRepository.save(leaveRequest);
+
+        if (approverResult.rerouted()) {
+            AuditLog newLog = new AuditLog();
+            newLog.setLeaveRequestId(leaveRequest.getId());
+            newLog.setPreviousStatus(null);
+            newLog.setNewStatus(LeaveStatus.REROUTED_TO_HR);
+            newLog.setActionedBy(null);
+            newLog.setNotes("Leave request automatically rerouted to HR - no active manager found");
+            auditLogRepository.save(newLog);
+        }
 
         if (leaveType.isRequiresBalanceTracking() && balance != null) {
             balance.setPendingDays(balance.getPendingDays().add(requestedDays));
@@ -131,7 +145,7 @@ public class LeaveRequestService {
 
         final BigDecimal finalRequestedDays = requestedDays;
 
-        for (User approver : findLeaveRequestApprover(submitter, leaveType)){
+        for (User approver : approverResult.approvers()){
             emailService.sendLeaveRequestEmailToApprover(
                     approver.getEmail(),
                     approver.getFirstName(),
@@ -335,29 +349,29 @@ public class LeaveRequestService {
         return LeaveRequestResponse.from(request);
     }
 
-    private List<User> findLeaveRequestApprover(User submitter, LeaveType leaveType) {
+    private ApproverResult findLeaveRequestApprover(User submitter, LeaveType leaveType) {
 
         if (leaveType.isRequiresHrApproval() && (submitter.getRole() == Role.EMPLOYEE || submitter.getRole() == Role.MANAGER)) {
-            return userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+            return new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), false);
         }
 
         return switch (submitter.getRole()) {
             case EMPLOYEE -> {
                 if (submitter.getTeamId() == null) {
-                    yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+                    yield new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), true);
                 }
                 Optional<Team> team = teamRepository.findById(submitter.getTeamId());
                 if (team.isEmpty()) {
-                    yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+                    yield new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), true);
                 }
 
-                Optional<User> manager = userRepository.findById(team.get().getManagerId());
+                Optional<User> manager = userRepository.findByIdAndIsActiveTrue(team.get().getManagerId());
                 yield manager
-                        .map(List::of)
-                        .orElseGet(() -> userRepository.findAllByRoleAndIsActiveTrue(Role.HR));
+                        .map(m -> new ApproverResult(List.of(m), false))
+                        .orElseGet(() -> new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), true));
             }
-            case MANAGER, ADMIN -> userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
-            case HR -> userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN);
+            case MANAGER, ADMIN -> new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), false);
+            case HR -> new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN), false);
         };
     }
 
