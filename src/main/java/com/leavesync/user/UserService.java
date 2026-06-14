@@ -1,5 +1,6 @@
 package com.leavesync.user;
 
+import com.leavesync.email.EmailService;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
 import com.leavesync.enums.Role;
