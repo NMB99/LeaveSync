@@ -7,6 +7,7 @@ import com.leavesync.exception.ForbiddenException;
 import com.leavesync.exception.InvalidLeaveRequestException;
 import com.leavesync.exception.LeaveRequestStateException;
 import com.leavesync.exception.ResourceNotFoundException;
+import com.leavesync.leavebalance.LeaveBalanceService;
 import com.leavesync.repository.*;
 import com.leavesync.security.AuthenticatedUser;
 import com.leavesync.user.EmailService;
@@ -33,6 +34,7 @@ public class LeaveRequestService {
     private final AuditLogRepository auditLogRepository;
     private final WorkingDayService workingDayService;
     private final EmailService emailService;
+    private final LeaveBalanceService leaveBalanceService;
 
     @Transactional
     public LeaveRequestResponse submit(UUID userId, SubmitLeaveRequest request) {
@@ -91,6 +93,12 @@ public class LeaveRequestService {
 
         if (leaveType.isRequiresBalanceTracking()) {
             int year = request.startDate().getYear();
+            int currentYear = LocalDate.now().getYear();
+
+            if (leaveBalanceRepository.findByUserIdAndYear(userId, year).isEmpty() && year == currentYear + 1) {
+                leaveBalanceService.createLeaveBalanceForYear(submitter, year);
+            }
+
             balance = leaveBalanceRepository.findByUserIdAndYear(userId, year)
                     .orElseThrow(() -> new ResourceNotFoundException("No leave balance found for user in " + year));
 
@@ -143,12 +151,13 @@ public class LeaveRequestService {
         List<LeaveRequest> requests = switch (principal.role()) {
             case EMPLOYEE -> leaveRequestRepository.findByUserId(principal.userId());
             case MANAGER -> {
-                User manager = userRepository.findById(principal.userId())
-                        .orElseThrow(() -> new ResourceNotFoundException("User", "id:", principal.userId().toString()));
-                List<User> teamMembers = userRepository.findByTeamId(manager.getTeamId());
+                List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
+                        .stream()
+                        .map(Team::getId)
+                        .toList();
+                List<User> teamMembers = userRepository.findByTeamIdIn(teamIds);
                 yield leaveRequestRepository.findByUserIdIn(
-                        teamMembers
-                                .stream()
+                        teamMembers.stream()
                                 .map(User::getId)
                                 .toList()
                 );
@@ -175,9 +184,11 @@ public class LeaveRequestService {
             case MANAGER -> {
                 User requestOwner = userRepository.findById(request.getUserId())
                         .orElseThrow(() -> new ResourceNotFoundException("User", "id:", request.getUserId().toString()));
-                User manager = userRepository.findById(principal.userId())
-                        .orElseThrow(() -> new ResourceNotFoundException("User", "id:", principal.userId().toString()));
-                if (requestOwner.getTeamId() == null || !requestOwner.getTeamId().equals(manager.getTeamId())) {
+                List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
+                        .stream()
+                        .map(Team::getId)
+                        .toList();
+                if (requestOwner.getTeamId() == null || !teamIds.contains(requestOwner.getTeamId())) {
                     throw new ForbiddenException("You are not authorized to view this leave request outside your team");
                 }
             }
@@ -297,6 +308,7 @@ public class LeaveRequestService {
             int year = request.getStartDate().getYear();
             LeaveBalance balance = leaveBalanceRepository.findByUserIdAndYear(request.getUserId(), year)
                     .orElseThrow(() -> new ResourceNotFoundException("Leave balance not found for user in " + year));
+
             balance.setPendingDays(balance.getPendingDays().subtract(request.getTotalWorkingDays()));
             leaveBalanceRepository.save(balance);
         }
@@ -370,9 +382,11 @@ public class LeaveRequestService {
                 }
                 User requester = userRepository.findById(request.getUserId())
                         .orElseThrow(() -> new ResourceNotFoundException("User", "id:", request.getUserId().toString()));
-                User manager = userRepository.findById(approver.userId())
-                        .orElseThrow(() -> new ResourceNotFoundException("User", "id:", approver.userId().toString()));
-                if (requester.getTeamId() == null || !requester.getTeamId().equals(manager.getTeamId())) {
+                List<UUID> teamIds = teamRepository.findByManagerId(approver.userId())
+                        .stream()
+                        .map(Team::getId)
+                        .toList();
+                if (requester.getTeamId() == null || !teamIds.contains(requester.getTeamId())) {
                     throw new ForbiddenException("You can only action leave requests for your team");
                 }
             }
