@@ -18,11 +18,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByInviteToken(String inviteToken);
 
-    List<User> findByTeamId(UUID teamId);
-
     List<User> findByIsActiveTrue();
 
-    Optional<User> findFirstByRoleAndIsActiveTrue(Role role);
+    List<User> findAllByRoleAndIsActiveTrue(Role role);
 
     boolean existsByTeamId(UUID teamId);
 

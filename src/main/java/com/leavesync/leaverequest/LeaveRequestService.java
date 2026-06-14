@@ -131,17 +131,17 @@ public class LeaveRequestService {
 
         final BigDecimal finalRequestedDays = requestedDays;
 
-        findLeaveRequestApprover(submitter, leaveType).ifPresent(approver ->
-                emailService.sendLeaveRequestEmailToApprover(
-                        approver.getEmail(),
-                        approver.getFirstName(),
-                        submitter.getFirstName() + " " + submitter.getLastName(),
-                        leaveType.getName(),
-                        request.startDate().toString(),
-                        request.endDate().toString(),
-                        finalRequestedDays
-                )
-        );
+        for (User approver : findLeaveRequestApprover(submitter, leaveType)){
+            emailService.sendLeaveRequestEmailToApprover(
+                    approver.getEmail(),
+                    approver.getFirstName(),
+                    submitter.getFirstName() + " " + submitter.getLastName(),
+                    leaveType.getName(),
+                    request.startDate().toString(),
+                    request.endDate().toString(),
+                    finalRequestedDays
+            );
+        }
 
         return LeaveRequestResponse.from(leaveRequest, balanceWarning);
     }
@@ -335,33 +335,29 @@ public class LeaveRequestService {
         return LeaveRequestResponse.from(request);
     }
 
-    private Optional<User> findLeaveRequestApprover(User submitter, LeaveType leaveType) {
+    private List<User> findLeaveRequestApprover(User submitter, LeaveType leaveType) {
 
         if (leaveType.isRequiresHrApproval() && (submitter.getRole() == Role.EMPLOYEE || submitter.getRole() == Role.MANAGER)) {
-            return userRepository.findFirstByRoleAndIsActiveTrue(Role.HR);
+            return userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
         }
 
         return switch (submitter.getRole()) {
             case EMPLOYEE -> {
                 if (submitter.getTeamId() == null) {
-                    yield userRepository.findFirstByRoleAndIsActiveTrue(Role.HR);
+                    yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
                 }
                 Optional<Team> team = teamRepository.findById(submitter.getTeamId());
                 if (team.isEmpty()) {
-                    yield userRepository.findFirstByRoleAndIsActiveTrue(Role.HR);
+                    yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
                 }
 
                 Optional<User> manager = userRepository.findById(team.get().getManagerId());
-                yield manager.isPresent() ? manager
-                        : userRepository.findFirstByRoleAndIsActiveTrue(Role.HR);
+                yield manager
+                        .map(List::of)
+                        .orElseGet(() -> userRepository.findAllByRoleAndIsActiveTrue(Role.HR));
             }
-            case MANAGER -> {
-                Optional<User> hr = userRepository.findFirstByRoleAndIsActiveTrue(Role.HR);
-                yield hr.isPresent() ? hr
-                        : userRepository.findFirstByRoleAndIsActiveTrue(Role.ADMIN);
-            }
-            case HR -> userRepository.findFirstByRoleAndIsActiveTrue(Role.ADMIN);
-            case ADMIN -> userRepository.findFirstByRoleAndIsActiveTrue(Role.HR);
+            case MANAGER, ADMIN -> userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+            case HR -> userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN);
         };
     }
 
