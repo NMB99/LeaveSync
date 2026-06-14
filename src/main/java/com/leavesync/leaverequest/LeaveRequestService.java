@@ -1,5 +1,6 @@
 package com.leavesync.leaverequest;
 
+import com.leavesync.email.EmailService;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
 import com.leavesync.enums.Role;
@@ -10,7 +11,6 @@ import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.leavebalance.LeaveBalanceService;
 import com.leavesync.repository.*;
 import com.leavesync.security.AuthenticatedUser;
-import com.leavesync.user.EmailService;
 import com.leavesync.workingday.WorkingDayService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

@@ -5,12 +5,16 @@ import com.leavesync.entity.User;
 import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.repository.LeaveBalanceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class LeaveBalanceService {
 
@@ -43,6 +47,25 @@ public class LeaveBalanceService {
 
                     return leaveBalanceRepository.save(newLeaveBalance);
                 });
+    }
+
+    public Optional<BigDecimal> getRemainingLeaveBalance(UUID userId, int year) {
+
+        Optional<LeaveBalance> balanceOpt = leaveBalanceRepository.findByUserIdAndYear(userId, year);
+
+        if (balanceOpt.isEmpty()) {
+            log.warn("No leave balance found for user {} in year {}", userId, year);
+            return Optional.empty();
+        }
+
+        LeaveBalance balance = balanceOpt.get();
+        return Optional.of(
+                balance
+                        .getTotalEntitlement()
+                        .add(balance.getCarriedOver())
+                        .subtract(balance.getLeaveUsed())
+                        .subtract(balance.getPendingDays())
+        );
     }
 
 }

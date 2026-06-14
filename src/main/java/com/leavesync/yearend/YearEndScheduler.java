@@ -14,4 +14,9 @@ public class YearEndScheduler {
     public void triggerAnnualRollover() {
         yearEndService.processAnnualRollover();
     }
+
+    @Scheduled(cron = "0 0 9 1 12 *")
+    public void triggerYearEndWarnings() {
+        yearEndService.sendYearEndWarnings();
+    }
 }

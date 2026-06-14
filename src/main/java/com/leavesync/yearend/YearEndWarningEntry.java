@@ -1,4 +1,12 @@
 package com.leavesync.yearend;
 
-public record YearEndWarningEntry() {
+import java.math.BigDecimal;
+
+public record YearEndWarningEntry(
+
+        String employeeFullName,
+        BigDecimal remainingBalance,
+        BigDecimal daysAtRisk
+
+) {
 }
