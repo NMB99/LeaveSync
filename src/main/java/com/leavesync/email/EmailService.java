@@ -1,5 +1,6 @@
-package com.leavesync.user;
+package com.leavesync.email;
 
+import com.leavesync.yearend.YearEndWarningEntry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
@@ -7,6 +8,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -151,6 +153,56 @@ public class EmailService {
                 + "If you have any questions, please contact your manager.\n\n"
                 + "The LeaveSync team"
         );
+
+        mailSender.send(message);
+    }
+
+    public void sendYearEndWarningEmail (
+            String toEmail,
+            String firstName,
+            BigDecimal remainingBalance,
+            BigDecimal daysAtRisk
+    ) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(toEmail);
+        message.setSubject("Action Required: Annual Leave Expiring Soon");
+        message.setText("Hi " + firstName + ",\n\n"
+                + "This is a reminder that you have " + remainingBalance + " days of annual leave remaining.\n\n"
+                + "Up to 5 days will carry over into the new year. The remaining " + daysAtRisk + " day(s) will expire on 31st December if not taken.\n\n"
+                + "Please log in to LeaveSync to review your leave balance and take necessary actions.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendYearEndSummaryEmail (
+            String toEmail,
+            String hrFirstName,
+            List<YearEndWarningEntry> entries
+    ) {
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Hi ").append(hrFirstName).append(",\n\n")
+                .append("The following employees have significant unused annual leave at risk of expiring on 31st December.\n\n");
+
+        for (YearEndWarningEntry entry : entries) {
+            sb.append("- ")
+                    .append(entry.employeeFullName()).append(": ")
+                    .append(entry.remainingBalance()).append(" days remaining, ")
+                    .append(entry.daysAtRisk()).append(" day(s) at risk\n");
+        }
+
+        sb.append("\nPlease review and follow up with relevant manager as needed.\n\n");
+        sb.append("The LeaveSync team");
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(toEmail);
+        message.setSubject("Annual Leave Summary");
+        message.setText(sb.toString());
 
         mailSender.send(message);
     }
