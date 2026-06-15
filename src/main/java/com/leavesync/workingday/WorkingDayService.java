@@ -50,4 +50,82 @@ public class WorkingDayService {
 
         return BigDecimal.valueOf(count);
     }
+
+    public LocalDate subtractWorkingDays (LocalDate from, int days) {
+
+        Set<LocalDate> publicHolidays = publicHolidayRepository
+                .findByRegionAndDateBetween(defaultRegion, from.minusDays(days * 3L), from)
+                .stream()
+                .map(PublicHoliday::getDate)
+                .collect(Collectors.toSet());
+
+        int counted = 0;
+        LocalDate current = from.minusDays(1);
+
+        while (counted < days) {
+            DayOfWeek day = current.getDayOfWeek();
+            boolean isWeekend = day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+            boolean isPublicHoliday = publicHolidays.contains(current);
+
+            if (!isWeekend && !isPublicHoliday) {
+                counted++;
+            }
+
+            if (counted < days) {
+                current = current.minusDays(1);
+            }
+        }
+
+        return current;
+    }
+
+    public LocalDate addWorkingDays (LocalDate from, int days) {
+
+        Set<LocalDate> publicHolidays = publicHolidayRepository
+                .findByRegionAndDateBetween(defaultRegion, from, from.plusDays(days * 3L))
+                .stream()
+                .map(PublicHoliday::getDate)
+                .collect(Collectors.toSet());
+
+        int counted = 0;
+        LocalDate current = from.plusDays(1);
+
+        while (counted < days) {
+            DayOfWeek day = current.getDayOfWeek();
+            boolean isWeekend = day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+            boolean isPublicHoliday = publicHolidays.contains(current);
+
+            if (!isWeekend && !isPublicHoliday) {
+                counted++;
+            }
+
+            if (counted < days) {
+                current = current.plusDays(1);
+            }
+        }
+        return current;
+    }
+
+    public LocalDate normaliseToWorkingDay (LocalDate date) {
+
+        Set<LocalDate> publicHolidays = publicHolidayRepository
+                .findByRegionAndDateBetween(defaultRegion, date, date.plusDays(7L))
+                .stream()
+                .map(PublicHoliday::getDate)
+                .collect(Collectors.toSet());
+
+        LocalDate current = date;
+
+        while (true) {
+            DayOfWeek day = current.getDayOfWeek();
+            boolean isWeekend = day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+            boolean isPublicHoliday = publicHolidays.contains(current);
+
+            if (!isWeekend && !isPublicHoliday) {
+                return current;
+            }
+
+            current = current.plusDays(1);
+        }
+    }
 }

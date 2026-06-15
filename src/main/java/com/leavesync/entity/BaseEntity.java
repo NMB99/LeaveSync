@@ -3,6 +3,7 @@ package com.leavesync.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -13,6 +14,7 @@ import java.util.UUID;
 
 @MappedSuperclass
 @Getter
+@EqualsAndHashCode(of = "id")
 public abstract class BaseEntity {
 
     @Id

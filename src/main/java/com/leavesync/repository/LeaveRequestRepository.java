@@ -18,8 +18,6 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
 
     List<LeaveRequest> findByUserIdIn(List<UUID> userIds);
 
-    List<LeaveRequest> findByStatus(LeaveStatus status);
-
     List<LeaveRequest> findByUserIdAndStatus(UUID userId, LeaveStatus status);
 
     List<LeaveRequest> findByUserIdAndStatusAndEndDateGreaterThanEqual(UUID userId, LeaveStatus status, LocalDate endDate);
@@ -34,4 +32,13 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    @Query("SELECT r FROM LeaveRequest r WHERE r.status = :status AND r.escalationStartDate = :date")
+    List<LeaveRequest> findByStatusAndEscalationStartDate(
+            @Param("status") LeaveStatus status,
+            @Param("date") LocalDate date
+    );
+
+    List<LeaveRequest> findByStatusInAndStartDate(List<LeaveStatus> status, LocalDate startDate);
+
 }

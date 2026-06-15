@@ -19,7 +19,11 @@ public class EmailService {
     @Value("${spring.mail.from}")
     private String from;
 
-    public void sendInviteEmail(String toEmail, String firstName, String inviteToken) {
+    public void sendInviteEmail(
+            String toEmail,
+            String firstName,
+            String inviteToken
+    ) {
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
@@ -36,7 +40,11 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    public void sendPasswordResetEmail(String toEmail, String firstName, String resetToken) {
+    public void sendPasswordResetEmail(
+            String toEmail,
+            String firstName,
+            String resetToken
+    ) {
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
@@ -52,7 +60,10 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    public void sendWelcomeEmail(String toEmail, String firstName) {
+    public void sendWelcomeEmail(
+            String toEmail,
+            String firstName
+    ) {
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
@@ -67,7 +78,10 @@ public class EmailService {
         mailSender.send(message);
     }
 
-    public void sendDeboardingEmail (String toEmail, String firstName) {
+    public void sendDeboardingEmail (
+            String toEmail,
+            String firstName
+    ) {
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
@@ -203,6 +217,106 @@ public class EmailService {
         message.setTo(toEmail);
         message.setSubject("Annual Leave Summary");
         message.setText(sb.toString());
+
+        mailSender.send(message);
+    }
+
+    public void sendDay3ReminderEmail (
+            String approverEmail,
+            String approverFirstName,
+            String employeeFullName,
+            String leaveType,
+            String startDate,
+            String endDate
+    ) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(approverEmail);
+        message.setSubject("Reminder: Leave Request Awaiting Your Action");
+        message.setText("Hi " + approverFirstName + ",\n\n"
+                + "This is a reminder that a leave request from " + employeeFullName + " has been awaiting your action for 3 working days.\n\n"
+                + "Leave Type: " + leaveType + "\n"
+                + "From: " + startDate + "\n"
+                + "To: " + endDate + "\n\n"
+                + "Please log in to LeaveSync to approve or reject this request.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendDay5EscalationEmail (
+            String hrEmail,
+            String hrFirstName,
+            String employeeFullName,
+            String leaveType,
+            String startDate,
+            String endDate
+    ) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(hrEmail);
+        message.setSubject("Escalation: Leave Request Requires HR Action");
+        message.setText("Hi " + hrFirstName + ",\n\n"
+                + "A leave request from " + employeeFullName + " has not been actioned after 5 working days and has been escalated to HR.\n\n"
+                + "Leave Type: " + leaveType + "\n"
+                + "From: " + startDate + "\n"
+                + "To: " + endDate + "\n\n"
+                + "Please log in to LeaveSync to approve or reject this request.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendUrgentLeaveNotificationEmail (
+            String recipientEmail,
+            String recipientFirstName,
+            String employeeFullName,
+            String leaveType,
+            String startDate,
+            String endDate
+    ) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(recipientEmail);
+        message.setSubject("Urgent: Leave Request Starting Tomorrow");
+        message.setText("Hi " + recipientFirstName + ",\n\n"
+                + "A leave request from " + employeeFullName + " is due to start tomorrow and has not yet been actioned.\n\n"
+                + "Leave Type: " + leaveType + "\n"
+                + "From: " + startDate + "\n"
+                + "To: " + endDate + "\n\n"
+                + "Please log in to LeaveSync to approve or reject this request.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendManagerLeaveApprovalNotificationEmail (
+            String recipientEmail,
+            String recipientFirstName,
+            String employeeFullName,
+            String leaveType,
+            String startDate,
+            String endDate
+    ) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(recipientEmail);
+        message.setSubject("Team Member Leave Approved");
+        message.setText("Hi " + recipientFirstName + ",\n\n"
+                + "This is to inform you that " + employeeFullName + "'s leave request has been approved by HR.\n\n"
+                + "Leave Type: " + leaveType + "\n"
+                + "From: " + startDate +"\n"
+                + "To: " + endDate + "\n\n"
+                + "Please plan team cover accordingly.\n\n"
+                + "The LeaveSync team"
+        );
 
         mailSender.send(message);
     }

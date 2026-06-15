@@ -49,4 +49,7 @@ public class LeaveRequest extends BaseEntity {
     @Column(name = "overlap_warning", nullable = false)
     private boolean overlapWarning = false;
 
+    @Column(name = "escalation_start_date")
+    private LocalDate escalationStartDate;
+
 }
