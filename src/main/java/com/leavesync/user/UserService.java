@@ -67,16 +67,18 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        LeaveBalance balance = new LeaveBalance();
-        balance.setUserId(savedUser.getId());
-        balance.setYear(LocalDate.now().getYear());
+        if (request.role() != Role.ADMIN) {
+            LeaveBalance balance = new LeaveBalance();
+            balance.setUserId(savedUser.getId());
+            balance.setYear(LocalDate.now().getYear());
 
-        BigDecimal entitlement = calculateProRatedEntitlement(LocalDate.now());
-        balance.setTotalEntitlement(entitlement);
-        balance.setCarriedOver(BigDecimal.ZERO);
-        balance.setLeaveUsed(BigDecimal.ZERO);
-        balance.setPendingDays(BigDecimal.ZERO);
-        leaveBalanceRepository.save(balance);
+            BigDecimal entitlement = calculateProRatedEntitlement(LocalDate.now());
+            balance.setTotalEntitlement(entitlement);
+            balance.setCarriedOver(BigDecimal.ZERO);
+            balance.setLeaveUsed(BigDecimal.ZERO);
+            balance.setPendingDays(BigDecimal.ZERO);
+            leaveBalanceRepository.save(balance);
+        }
 
         emailService.sendInviteEmail(savedUser.getEmail(), savedUser.getFirstName(), inviteToken);
 
