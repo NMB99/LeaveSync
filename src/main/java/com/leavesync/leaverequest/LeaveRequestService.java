@@ -161,7 +161,7 @@ public class LeaveRequestService {
         return LeaveRequestResponse.from(leaveRequest, balanceWarning);
     }
 
-    public List<LeaveRequestResponse> getLeaveRequests(AuthenticatedUser principal) {
+    public List<LeaveRequestResponse> getLeaveRequests(AuthenticatedUser principal, UUID userId) {
 
         List<LeaveRequest> requests = switch (principal.role()) {
             case EMPLOYEE -> leaveRequestRepository.findByUserId(principal.userId());
@@ -177,7 +177,9 @@ public class LeaveRequestService {
                                 .toList()
                 );
             }
-            case HR, ADMIN -> leaveRequestRepository.findAll();
+            case HR, ADMIN -> userId != null
+                    ? leaveRequestRepository.findByUserId(userId)
+                    : leaveRequestRepository.findAll();
         };
 
         return requests.stream()

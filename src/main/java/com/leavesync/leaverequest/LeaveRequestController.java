@@ -31,10 +31,11 @@ public class LeaveRequestController {
 
     @GetMapping
     public ResponseEntity<List<LeaveRequestResponse>> getLeaveRequests(
-            @AuthenticationPrincipal AuthenticatedUser principal
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(required = false) UUID userId
     ) {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(leaveRequestService.getLeaveRequests(principal));
+                .body(leaveRequestService.getLeaveRequests(principal, userId));
     }
 
     @GetMapping("/{id}")
