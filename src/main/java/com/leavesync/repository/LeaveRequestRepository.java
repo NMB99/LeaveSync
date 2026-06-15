@@ -41,4 +41,20 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
 
     List<LeaveRequest> findByStatusInAndStartDate(List<LeaveStatus> status, LocalDate startDate);
 
+    @Query("SELECT r FROM LeaveRequest r WHERE r.status IN :statuses" +
+            " AND r.startDate <= :date AND r.endDate >= :date")
+    List<LeaveRequest> findByStatusInAndDateWithin(
+            @Param("statuses") List<LeaveStatus> statuses,
+            @Param("date") LocalDate date
+    );
+
+    @Query("SELECT r FROM LeaveRequest r WHERE r.status IN :statuses" +
+            " AND r.startDate <= :date AND r.endDate >= :date" +
+            " AND r.userId IN :userIds")
+    List<LeaveRequest> findByStatusInAndDateWithinAndUserIdIn(
+            @Param("statuses") List<LeaveStatus> statuses,
+            @Param("date") LocalDate date,
+            @Param("userIds") List<UUID> userIds
+    );
+
 }

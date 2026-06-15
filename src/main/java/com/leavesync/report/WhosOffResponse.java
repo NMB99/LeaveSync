@@ -1,4 +1,4 @@
-package com.leavesync.reports;
+package com.leavesync.report;
 
 import com.leavesync.entity.LeaveRequest;
 import com.leavesync.entity.LeaveType;

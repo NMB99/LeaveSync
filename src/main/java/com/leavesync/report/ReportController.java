@@ -1,4 +1,4 @@
-package com.leavesync.reports;
+package com.leavesync.report;
 
 import com.leavesync.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -28,5 +30,25 @@ public class ReportController {
     ) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(reportService.getWhosOff(principal, date));
+    }
+
+    @GetMapping("/balance-summary")
+    public ResponseEntity<List<BalanceSummaryResponse>> getBalanceSummary(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam int year
+    ) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(reportService.getBalanceSummary(principal, year));
+    }
+
+    @GetMapping("/leave-history")
+    public ResponseEntity<List<LeaveHistoryResponse>> getLeaveHistory(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+    ) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(reportService.getLeaveHistory(principal, userId, startDate, endDate));
     }
 }
