@@ -125,6 +125,7 @@ public class LeaveRequestService {
         );
         leaveRequest.setNoticePeriodWarning(noticePeriodWarning);
         leaveRequest.setOverlapWarning(overlapWarning);
+        leaveRequest.setEscalationStartDate(workingDayService.normaliseToWorkingDay(today));
 
         leaveRequestRepository.save(leaveRequest);
 
@@ -297,6 +298,22 @@ public class LeaveRequestService {
                 request.getStartDate().toString(),
                 request.getEndDate().toString()
         );
+
+        if (leaveType.isRequiresHrApproval() && principal.role() == Role.HR
+                && requester.getRole() == Role.EMPLOYEE && requester.getTeamId() != null) {
+            teamRepository.findById(requester.getTeamId()).ifPresent(team ->
+                userRepository.findByIdAndIsActiveTrue(team.getManagerId()).ifPresent(manager ->
+                    emailService.sendManagerLeaveApprovalNotificationEmail(
+                            manager.getEmail(),
+                            manager.getFirstName(),
+                            requester.getFirstName() + " " + requester.getLastName(),
+                            leaveType.getName(),
+                            request.getStartDate().toString(),
+                            request.getEndDate().toString()
+                    )
+                )
+            );
+        }
 
         return LeaveRequestResponse.from(request);
     }
