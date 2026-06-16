@@ -47,9 +47,13 @@ public class LeaveRequestService {
 
         LocalDate today = LocalDate.now();
 
-        boolean sickLeave = leaveType.getName().equalsIgnoreCase("SICK");
+        boolean sickLeave = leaveType.getCode().equals("SICK");
         if (!sickLeave && request.startDate().isBefore(today)) {
             throw new InvalidLeaveRequestException("Start date cannot be in the past");
+        }
+
+        if (sickLeave && request.startDate().isAfter(today)) {
+            throw new InvalidLeaveRequestException("Sick leave cannot be submitted for a future date");
         }
 
         if (request.endDate().isBefore(request.startDate())) {
@@ -79,11 +83,11 @@ public class LeaveRequestService {
         boolean overlapWarning = !overlappingRequests.isEmpty();
 
         boolean noticePeriodWarning = false;
-        if (leaveType.getName().equalsIgnoreCase("ANNUAL")) {
+        if (leaveType.getCode().equals("ANNUAL")) {
             BigDecimal noticeDays = workingDayService.countWorkingDays(today.plusDays(1), request.startDate());
             noticePeriodWarning = noticeDays.compareTo(new BigDecimal("5")) < 0;
         }
-        else if (leaveType.getName().equalsIgnoreCase("UNPAID")) {
+        else if (leaveType.getCode().equals("UNPAID")) {
             BigDecimal noticeDays = workingDayService.countWorkingDays(today.plusDays(1), request.startDate());
             noticePeriodWarning = noticeDays.compareTo(new BigDecimal("10")) < 0;
         }

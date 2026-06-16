@@ -15,6 +15,9 @@ public class LeaveType extends BaseEntity {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(nullable = false, unique = true)
+    private String code;
+
     @Column(name = "requires_balance_tracking", nullable = false)
     private boolean requiresBalanceTracking;
 

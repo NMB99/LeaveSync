@@ -33,12 +33,40 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
             @Param("endDate") LocalDate endDate
     );
 
-    @Query("SELECT r FROM LeaveRequest r WHERE r.status = :status AND r.escalationStartDate = :date")
+    @Query("SELECT r FROM LeaveRequest r WHERE r.status = :status"  +
+            " AND r.escalationStartDate = :date")
     List<LeaveRequest> findByStatusAndEscalationStartDate(
             @Param("status") LeaveStatus status,
             @Param("date") LocalDate date
     );
 
     List<LeaveRequest> findByStatusInAndStartDate(List<LeaveStatus> status, LocalDate startDate);
+
+    @Query("SELECT r FROM LeaveRequest r WHERE r.status IN :statuses" +
+            " AND r.startDate <= :date AND r.endDate >= :date")
+    List<LeaveRequest> findByStatusInAndDateWithin(
+            @Param("statuses") List<LeaveStatus> statuses,
+            @Param("date") LocalDate date
+    );
+
+    @Query("SELECT r FROM LeaveRequest r WHERE r.status IN :statuses" +
+            " AND r.startDate <= :date AND r.endDate >= :date" +
+            " AND r.userId IN :userIds")
+    List<LeaveRequest> findByStatusInAndDateWithinAndUserIdIn(
+            @Param("statuses") List<LeaveStatus> statuses,
+            @Param("date") LocalDate date,
+            @Param("userIds") List<UUID> userIds
+    );
+
+    @Query("SELECT r FROM LeaveRequest r WHERE r.leaveTypeId = :leaveTypeId" +
+            " AND r.status IN :statuses" +
+            " AND (CAST(:startDate AS LOCALDATE) IS NULL OR r.startDate >= :startDate)" +
+            " AND (CAST(:endDate AS LOCALDATE) IS NULL OR r.startDate <= :endDate)")
+    List<LeaveRequest> findByLeaveTypeIdAndStatusInAndDateRange(
+            @Param("leaveTypeId") UUID leaveTypeId,
+            @Param("statuses") List<LeaveStatus> statuses,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 
 }
