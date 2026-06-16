@@ -52,6 +52,10 @@ public class LeaveRequestService {
             throw new InvalidLeaveRequestException("Start date cannot be in the past");
         }
 
+        if (sickLeave && request.startDate().isAfter(today)) {
+            throw new InvalidLeaveRequestException("Sick leave cannot be submitted for a future date");
+        }
+
         if (request.endDate().isBefore(request.startDate())) {
             throw new InvalidLeaveRequestException("End date must be after start date");
         }
