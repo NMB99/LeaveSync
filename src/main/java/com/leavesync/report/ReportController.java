@@ -3,6 +3,7 @@ package com.leavesync.report;
 import com.leavesync.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -60,5 +61,56 @@ public class ReportController {
     ) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(reportService.getAbsencePatterns(principal, startDate, endDate));
+    }
+
+    @GetMapping("/whos-off/export-csv")
+    public ResponseEntity<String> exportWhosOffAsCsv(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        String csv = CsvExportUtil.exportToCsv(reportService.getWhosOff(principal, date));
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.CONTENT_TYPE, "text/csv")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"whos-off-report.csv\"")
+                .body(csv);
+    }
+
+    @GetMapping("/balance-summary/export-csv")
+    public ResponseEntity<String> exportBalanceSummaryAsCsv(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam int year
+    ) {
+        String csv = CsvExportUtil.exportToCsv(reportService.getBalanceSummary(principal, year));
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.CONTENT_TYPE, "text/csv")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"balance-summary-report.csv\"")
+                .body(csv);
+    }
+
+    @GetMapping("/leave-history/export-csv")
+    public ResponseEntity<String> exportLeaveHistoryAsCsv(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+    ) {
+        String csv = CsvExportUtil.exportToCsv(reportService.getLeaveHistory(principal, userId, startDate, endDate));
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.CONTENT_TYPE, "text/csv")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"leave-history-report.csv\"")
+                .body(csv);
+    }
+
+    @GetMapping("/absence-patterns/export-csv")
+    public ResponseEntity<String> exportAbsencePatternsAsCsv(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        String csv = CsvExportUtil.exportAbsencePatternsToCsv(reportService.getAbsencePatterns(principal, startDate, endDate));
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.CONTENT_TYPE, "text/csv")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"absence-patterns-report.csv\"")
+                .body(csv);
     }
 }
