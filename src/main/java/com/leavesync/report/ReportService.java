@@ -3,6 +3,7 @@ package com.leavesync.report;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
 import com.leavesync.exception.ForbiddenException;
+import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.repository.*;
 import com.leavesync.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
@@ -152,6 +153,49 @@ public class ReportService {
                             employeeMap.get(request.getUserId()),
                             leaveTypeMap.get(request.getLeaveTypeId()),
                             actionedByMap.get(log.getActionedBy())
+                    );
+                })
+                .toList();
+    }
+
+    public List<AbsencePatternResponse> getAbsencePatterns(
+            AuthenticatedUser principal, LocalDate startDate, LocalDate endDate) {
+
+        LeaveType sickLeaveType = leaveTypeRepository.findByCode("SICK")
+                .orElseThrow(() -> new ResourceNotFoundException("Sick leave type not found"));
+
+        List<LeaveStatus> statuses = List.of(LeaveStatus.APPROVED, LeaveStatus.REJECTED);
+
+        List<LeaveRequest> sickRequests = switch (principal.role()) {
+            case EMPLOYEE, MANAGER -> throw new ForbiddenException("You are not authorized to view/access this resource");
+            case HR, ADMIN -> leaveRequestRepository.findByLeaveTypeIdAndStatusInAndDateRange(
+                    sickLeaveType.getId(), statuses, startDate, endDate
+            );
+        };
+
+        Map<UUID, List<LeaveRequest>> groupUserRequests = sickRequests.stream()
+                .collect(Collectors.groupingBy(LeaveRequest::getUserId));
+
+        Map<UUID, User> userMap = userRepository.findAllById(groupUserRequests.keySet())
+                .stream().collect(Collectors.toMap(User::getId, Function.identity()));
+
+        return groupUserRequests.entrySet().stream()
+                .map(entry -> {
+                    UUID userId = entry.getKey();
+                    List<LeaveRequest> requests = entry.getValue();
+                    User user = userMap.get(userId);
+
+                    List<AbsencePatternResponse.SickLeaveInstance> instances = requests.stream()
+                            .map(rq -> new AbsencePatternResponse.SickLeaveInstance(
+                                    rq.getId(), rq.getStartDate(), rq.getEndDate(),
+                                    rq.getTotalWorkingDays(), rq.getStatus()
+                            ))
+                            .toList();
+                    return new AbsencePatternResponse(
+                            userId,
+                            user.getFirstName() + " " + user.getLastName(),
+                            instances.size(),
+                            instances
                     );
                 })
                 .toList();

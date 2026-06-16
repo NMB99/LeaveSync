@@ -51,4 +51,14 @@ public class ReportController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(reportService.getLeaveHistory(principal, userId, startDate, endDate));
     }
+
+    @GetMapping("/absence-patterns")
+    public ResponseEntity<List<AbsencePatternResponse>> getAbsencePatterns(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(reportService.getAbsencePatterns(principal, startDate, endDate));
+    }
 }
