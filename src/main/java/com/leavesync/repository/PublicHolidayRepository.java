@@ -2,6 +2,7 @@ package com.leavesync.repository;
 
 import com.leavesync.entity.PublicHoliday;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -19,4 +20,6 @@ public interface PublicHolidayRepository extends JpaRepository<PublicHoliday, UU
 
     boolean existsByDateAndRegion(LocalDate date, String region);
 
+    @Query("SELECT DISTINCT p.region FROM PublicHoliday p")
+    List<String> findDistinctRegions();
 }

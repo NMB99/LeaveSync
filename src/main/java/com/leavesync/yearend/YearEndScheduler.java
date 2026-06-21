@@ -2,6 +2,7 @@ package com.leavesync.yearend;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.annotation.Schedules;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,5 +19,13 @@ public class YearEndScheduler {
     @Scheduled(cron = "0 0 9 1 12 *")
     public void triggerYearEndWarnings() {
         yearEndService.sendYearEndWarnings();
+    }
+
+    @Schedules({
+            @Scheduled(cron = "0 0 9 1 11 *"),
+            @Scheduled(cron = "0 0 9 1 12 *")
+    })
+    public void triggerPublicHolidayCheck() {
+        yearEndService.checkNewYearPublicHolidays();
     }
 }
