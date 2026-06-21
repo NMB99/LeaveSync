@@ -321,4 +321,25 @@ public class EmailService {
         mailSender.send(message);
     }
 
+    public void sendMissingPublicHolidaysEmail(
+            String toEmail,
+            String firstName,
+            int newYear,
+            List<String> missingRegions
+    ) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(toEmail);
+        message.setSubject("Action Required: Missing Public Holidays for " + newYear);
+        message.setText("Hi " + firstName + ",\n\n"
+                + "Public holidays for " + newYear + " have not been added for the following region(s):\n\n"
+                + String.join("\n", missingRegions) + "\n\n"
+                + "Please log in to LeaveSync and add the public holidays for " + newYear
+                + " as soon as possible to ensure working day calculations remain accurate.\n\n"
+                + "The LeaveSync team"
+        );
+
+        mailSender.send(message);
+    }
 }

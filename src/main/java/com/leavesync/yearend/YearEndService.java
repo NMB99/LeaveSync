@@ -4,6 +4,7 @@ import com.leavesync.email.EmailService;
 import com.leavesync.entity.User;
 import com.leavesync.enums.Role;
 import com.leavesync.leavebalance.LeaveBalanceService;
+import com.leavesync.repository.PublicHolidayRepository;
 import com.leavesync.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ public class YearEndService {
     private final LeaveBalanceService leaveBalanceService;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final PublicHolidayRepository publicHolidayRepository;
 
     public void processAnnualRollover() {
 
@@ -95,7 +97,43 @@ public class YearEndService {
                     sortedEntries
             );
         }
+
         log.info("Year-end warnings: {} employees flagged, summary sent to {} HR users.", entries.size(), hrUsers.size());
+    }
+
+    public void checkNewYearPublicHolidays() {
+
+        int newYear = LocalDate.now().getYear() + 1;
+
+        List<String> regions = publicHolidayRepository.findDistinctRegions();
+
+        List<String> missingRegions = regions.stream()
+                .filter(region -> {
+                    LocalDate from = LocalDate.of(newYear, 1, 1);
+                    LocalDate to = LocalDate.of(newYear, 12, 31);
+                    return publicHolidayRepository.findByRegionAndDateBetween(region, from, to).isEmpty();
+                })
+                .toList();
+
+        if (missingRegions.isEmpty()) {
+            log.info("Public holidays check: All regions have data for {}", newYear);
+            return;
+        }
+
+        List<User> recipients = new ArrayList<>();
+        recipients.addAll(userRepository.findAllByRoleAndIsActiveTrue(Role.HR));
+        recipients.addAll(userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN));
+
+        for (User recipient : recipients) {
+            emailService.sendMissingPublicHolidaysEmail(
+                    recipient.getEmail(),
+                    recipient.getFirstName(),
+                    newYear,
+                    missingRegions
+            );
+        }
+
+        log.info("Public holidays check: missing holidays data for {} in regions {}", newYear, missingRegions);
     }
 
 }
