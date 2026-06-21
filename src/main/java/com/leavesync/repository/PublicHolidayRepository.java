@@ -15,4 +15,8 @@ public interface PublicHolidayRepository extends JpaRepository<PublicHoliday, UU
 
     List<PublicHoliday> findByRegionAndDateBetween(String region, LocalDate from, LocalDate to);
 
+    List<PublicHoliday> findByDateBetween(LocalDate from, LocalDate to);
+
+    boolean existsByDateAndRegion(LocalDate date, String region);
+
 }
