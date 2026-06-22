@@ -1,5 +1,6 @@
 package com.leavesync.leaverequest;
 
+import com.leavesync.common.PageResponse;
 import com.leavesync.email.EmailService;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
@@ -13,6 +14,8 @@ import com.leavesync.repository.*;
 import com.leavesync.security.AuthenticatedUser;
 import com.leavesync.workingday.WorkingDayService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -165,30 +168,24 @@ public class LeaveRequestService {
         return LeaveRequestResponse.from(leaveRequest, balanceWarning);
     }
 
-    public List<LeaveRequestResponse> getLeaveRequests(AuthenticatedUser principal, UUID userId) {
+    public PageResponse<LeaveRequestResponse> getLeaveRequests(AuthenticatedUser principal, UUID userId, Pageable pageable) {
 
-        List<LeaveRequest> requests = switch (principal.role()) {
-            case EMPLOYEE -> leaveRequestRepository.findByUserId(principal.userId());
+        Page<LeaveRequest> requests = switch (principal.role()) {
+            case EMPLOYEE -> leaveRequestRepository.findByUserId(principal.userId(), pageable);
             case MANAGER -> {
                 List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
                         .stream()
                         .map(Team::getId)
                         .toList();
-                List<User> teamMembers = userRepository.findByTeamIdIn(teamIds);
-                yield leaveRequestRepository.findByUserIdIn(
-                        teamMembers.stream()
-                                .map(User::getId)
-                                .toList()
-                );
+                List<UUID> teamMembersIds = userRepository.findIdsByTeamIdIn(teamIds);
+                yield leaveRequestRepository.findByUserIdIn(teamMembersIds, pageable);
             }
             case HR, ADMIN -> userId != null
-                    ? leaveRequestRepository.findByUserId(userId)
-                    : leaveRequestRepository.findAll();
+                    ? leaveRequestRepository.findByUserId(userId, pageable)
+                    : leaveRequestRepository.findAll(pageable);
         };
 
-        return requests.stream()
-                .map(LeaveRequestResponse::from)
-                .toList();
+        return PageResponse.from(requests.map(LeaveRequestResponse::from));
     }
 
     public LeaveRequestResponse getLeaveRequestById(AuthenticatedUser principal, UUID requestId) {

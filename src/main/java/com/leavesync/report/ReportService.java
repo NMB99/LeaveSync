@@ -40,12 +40,9 @@ public class ReportService {
                         .stream()
                         .map(Team::getId)
                         .toList();
-                List<UUID> usersIds = userRepository.findByTeamIdIn(teamsIds)
-                        .stream()
-                        .map(User::getId)
-                        .toList();
+                List<UUID> userIds = userRepository.findIdsByTeamIdIn(teamsIds);
                 yield leaveRequestRepository
-                        .findByStatusInAndDateWithinAndUserIdIn(statuses, date, usersIds);
+                        .findByStatusInAndDateWithinAndUserIdIn(statuses, date, userIds);
             }
             case HR, ADMIN -> leaveRequestRepository
                         .findByStatusInAndDateWithin(statuses, date);
@@ -77,10 +74,7 @@ public class ReportService {
                         .stream()
                         .map(Team::getId)
                         .toList();
-                List<UUID> userIds = userRepository.findByTeamIdIn(teamIds)
-                        .stream()
-                        .map(User::getId)
-                        .toList();
+                List<UUID> userIds = userRepository.findIdsByTeamIdIn(teamIds);
                 yield leaveBalanceRepository
                         .findByUserIdInAndYear(userIds, year);
             }

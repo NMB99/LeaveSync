@@ -1,5 +1,6 @@
 package com.leavesync.user;
 
+import com.leavesync.common.PageResponse;
 import com.leavesync.email.EmailService;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
@@ -13,6 +14,8 @@ import com.leavesync.repository.*;
 import com.leavesync.security.AuthenticatedUser;
 import com.leavesync.workingday.WorkingDayService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -138,24 +141,22 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public List<UserResponse> getAllUsers(AuthenticatedUser principal) {
+    public PageResponse<UserResponse> getAllUsers(AuthenticatedUser principal, Pageable pageable) {
 
-        List<User> users = switch (principal.role()) {
-            case ADMIN, HR -> userRepository.findAll();
+        Page<User> users = switch (principal.role()) {
+            case ADMIN, HR -> userRepository.findAll(pageable);
             case MANAGER -> {
                 List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
                         .stream()
                         .map(Team::getId)
                         .toList();
 
-                yield  userRepository.findByTeamIdIn(teamIds);
+                yield  userRepository.findByTeamIdIn(teamIds, pageable);
             }
             default -> throw new ForbiddenException("You are not authorized to view this resource");
         };
 
-        return users.stream()
-                .map(UserResponse::from)
-                .toList();
+        return PageResponse.from(users.map(UserResponse::from));
     }
 
     public UserResponse getUserById(UUID userId, AuthenticatedUser principal) {

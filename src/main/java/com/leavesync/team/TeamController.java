@@ -1,15 +1,17 @@
 package com.leavesync.team;
 
+import com.leavesync.common.PageResponse;
 import com.leavesync.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -30,11 +32,13 @@ public class TeamController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<List<TeamResponse>> getAllTeams(
-            @AuthenticationPrincipal AuthenticatedUser principal
+    public ResponseEntity<PageResponse<TeamResponse>> getAllTeams(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        List<TeamResponse> responses = teamService.getAllTeams(principal);
-        return ResponseEntity.status(HttpStatus.OK).body(responses);
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.status(HttpStatus.OK).body(teamService.getAllTeams(principal, pageable));
     }
 
     @GetMapping("/{id}")

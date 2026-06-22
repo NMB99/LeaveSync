@@ -1,8 +1,11 @@
 package com.leavesync.leaverequest;
 
+import com.leavesync.common.PageResponse;
 import com.leavesync.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,12 +33,15 @@ public class LeaveRequestController {
     }
 
     @GetMapping
-    public ResponseEntity<List<LeaveRequestResponse>> getLeaveRequests(
+    public ResponseEntity<PageResponse<LeaveRequestResponse>> getLeaveRequests(
             @AuthenticationPrincipal AuthenticatedUser principal,
-            @RequestParam(required = false) UUID userId
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(leaveRequestService.getLeaveRequests(principal, userId));
+                .body(leaveRequestService.getLeaveRequests(principal, userId, pageable));
     }
 
     @GetMapping("/{id}")

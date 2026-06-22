@@ -2,6 +2,8 @@ package com.leavesync.repository;
 
 import com.leavesync.entity.User;
 import com.leavesync.enums.Role;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -26,5 +28,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByTeamId(UUID teamId);
 
-    List<User> findByTeamIdIn(List<UUID> teamIds);
+    List<UUID> findIdsByTeamIdIn(List<UUID> teamIds);
+    Page<User> findByTeamIdIn(List<UUID> teamIds, Pageable pageable);
 }
