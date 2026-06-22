@@ -13,8 +13,6 @@ import java.util.UUID;
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
-    List<AuditLog> findByLeaveRequestId(UUID leaveRequestId);
-
     @Query("SELECT a FROM AuditLog a WHERE a.leaveRequestId IN :requestIds" +
             " AND (CAST(:startDate AS LOCALDATETIME) IS NULL OR a.changedAt >= :startDate)" +
             " AND (CAST(:endDate AS LOCALDATETIME) IS NULL OR a.changedAt <= :endDate)")

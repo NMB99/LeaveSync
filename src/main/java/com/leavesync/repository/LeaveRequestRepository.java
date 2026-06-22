@@ -19,7 +19,6 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
     List<LeaveRequest> findByUserId(UUID userId);
     Page<LeaveRequest> findByUserId(UUID userId, Pageable pageable);
 
-    List<LeaveRequest> findByUserIdIn(List<UUID> userIds);
     Page<LeaveRequest> findByUserIdIn(List<UUID> userIds, Pageable pageable);
 
     List<LeaveRequest> findByUserIdAndStatus(UUID userId, LeaveStatus status);
@@ -54,12 +53,30 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
     );
 
     @Query("SELECT r FROM LeaveRequest r WHERE r.status IN :statuses" +
+            " AND r.startDate <= :date AND r.endDate >= :date")
+    Page<LeaveRequest> findByStatusInAndDateWithin(
+            @Param("statuses") List<LeaveStatus> statuses,
+            @Param("date") LocalDate date,
+            Pageable pageable
+    );
+
+    @Query("SELECT r FROM LeaveRequest r WHERE r.status IN :statuses" +
             " AND r.startDate <= :date AND r.endDate >= :date" +
             " AND r.userId IN :userIds")
     List<LeaveRequest> findByStatusInAndDateWithinAndUserIdIn(
             @Param("statuses") List<LeaveStatus> statuses,
             @Param("date") LocalDate date,
             @Param("userIds") List<UUID> userIds
+    );
+
+    @Query("SELECT r FROM LeaveRequest r WHERE r.status IN :statuses" +
+            " AND r.startDate <= :date AND r.endDate >= :date" +
+            " AND r.userId IN :userIds")
+    Page<LeaveRequest> findByStatusInAndDateWithinAndUserIdIn(
+            @Param("statuses") List<LeaveStatus> statuses,
+            @Param("date") LocalDate date,
+            @Param("userIds") List<UUID> userIds,
+            Pageable pageable
     );
 
     @Query("SELECT r FROM LeaveRequest r WHERE r.leaveTypeId = :leaveTypeId" +
@@ -73,4 +90,27 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
             @Param("endDate") LocalDate endDate
     );
 
+    @Query("SELECT DISTINCT r.userId FROM LeaveRequest r WHERE r.leaveTypeId = :leaveTypeId" +
+            " AND r.status IN :statuses" +
+            " AND (CAST(:startDate AS LOCALDATE) IS NULL OR r.startDate >= :startDate)" +
+            " AND (CAST(:endDate AS LOCALDATE) IS NULL OR r.startDate <= :endDate)")
+    Page<UUID> findDistinctUserIdsByLeaveTypeIdAndStatusInAndDateRange(
+            @Param("leaveTypeId") UUID leaveTypeId,
+            @Param("statuses") List<LeaveStatus> statuses,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable
+    );
+
+    @Query("SELECT r FROM LeaveRequest r WHERE r.leaveTypeId = :leaveTypeId" +
+            " AND r.status IN :statuses" +
+            " AND (CAST(:startDate AS LOCALDATE) IS NULL OR r.startDate >= :startDate)" +
+            " AND (CAST(:endDate AS LOCALDATE) IS NULL OR r.startDate <= :endDate)" +
+            " AND r.userId IN :userIds")
+    List<LeaveRequest> findByLeaveTypeIdAndStatusInAndDateRangeAndUserIdIn(
+            @Param("leaveTypeId") UUID leaveTypeId,
+            @Param("statuses") List<LeaveStatus> statuses,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("userIds") List<UUID> userIds);
 }

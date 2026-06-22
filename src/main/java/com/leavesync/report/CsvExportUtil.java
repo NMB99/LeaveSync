@@ -30,11 +30,39 @@ public class CsvExportUtil {
         return header + "\n" + rows;
     }
 
+    public static String exportLeaveHistoryToCsv(List<LeaveHistoryResponse> data) {
+
+        if (data.isEmpty())
+            return "";
+
+        String header = "leaveRequestId,employeeName,leaveType,startDate,endDate,"
+                + "auditLogId,previousStatus,newStatus,actionedBy,changedAt,notes";
+
+        String rows = data.stream()
+                .flatMap(response -> response.statusHistory().stream()
+                        .map(entry -> String.join(",",
+                                response.leaveRequestId().toString(),
+                                response.employeeName(),
+                                response.leaveType(),
+                                response.startDate().toString(),
+                                response.endDate().toString(),
+                                entry.auditLogId().toString(),
+                                entry.previousStatus() != null ? entry.previousStatus().toString() : "",
+                                entry.newStatus().toString(),
+                                entry.actionedBy(),
+                                entry.changedAt().toString(),
+                                entry.notes() != null ? entry.notes() : ""
+                        ))
+                )
+                .collect(Collectors.joining("\n"));
+
+        return header + "\n" + rows;
+    }
+
     public static String exportAbsencePatternsToCsv(List<AbsencePatternResponse> data) {
 
-        if (data.isEmpty()) {
+        if (data.isEmpty())
             return "";
-        }
 
         String header = "userId,employeeName,instanceCount,leaveRequestId,startDate,endDate,totalWorkingDays,status";
 
