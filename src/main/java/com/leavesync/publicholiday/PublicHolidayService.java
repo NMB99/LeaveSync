@@ -5,6 +5,7 @@ import com.leavesync.exception.ConflictException;
 import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.repository.PublicHolidayRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -18,6 +19,7 @@ public class PublicHolidayService {
 
     private final PublicHolidayRepository publicHolidayRepository;
 
+    @CacheEvict(value = "holidays", allEntries = true)
     public CreatePublicHolidaysResponse createPublicHolidays(CreatePublicHolidaysRequest request) {
 
         List<PublicHolidayValidationError> errors = new ArrayList<>();
@@ -95,6 +97,7 @@ public class PublicHolidayService {
         );
     }
 
+    @CacheEvict(value = "holidays", allEntries = true)
     public PublicHolidayResponse updatePublicHoliday(UUID id, PublicHolidayRequest request) {
 
         PublicHoliday holiday = publicHolidayRepository.findById(id)
@@ -114,6 +117,7 @@ public class PublicHolidayService {
         );
     }
 
+    @CacheEvict(value = "holidays", allEntries = true)
     public void deletePublicHoliday(UUID id) {
 
         if (!publicHolidayRepository.existsById(id)) {

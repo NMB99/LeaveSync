@@ -1,7 +1,6 @@
 package com.leavesync.workingday;
 
-import com.leavesync.entity.PublicHoliday;
-import com.leavesync.repository.PublicHolidayRepository;
+import com.leavesync.publicholiday.PublicHolidayCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,7 +15,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class WorkingDayService {
 
-    private final PublicHolidayRepository publicHolidayRepository;
+    private final PublicHolidayCacheService publicHolidayCacheService;
 
     @Value("${leavesync.default-region}")
     private String defaultRegion;
@@ -27,11 +26,14 @@ public class WorkingDayService {
 
     public BigDecimal countWorkingDays (LocalDate from, LocalDate to) {
 
-        Set<LocalDate> publicHolidays = publicHolidayRepository
-                .findByRegionAndDateBetween(defaultRegion, from, to)
-                .stream()
-                .map(PublicHoliday::getDate)
-                .collect(Collectors.toSet());
+        Set<Integer> years = Set.of(from.getYear(), to.getYear());
+
+        Set<LocalDate> publicHolidays = years.stream()
+                .flatMap(year -> publicHolidayCacheService
+                        .getPublicHolidaysForYear(defaultRegion, year)
+                        .stream()
+                )
+                .collect(Collectors.toUnmodifiableSet());
 
         int count = 0;
         LocalDate current = from;
@@ -53,11 +55,14 @@ public class WorkingDayService {
 
     public LocalDate subtractWorkingDays (LocalDate from, int days) {
 
-        Set<LocalDate> publicHolidays = publicHolidayRepository
-                .findByRegionAndDateBetween(defaultRegion, from.minusDays(days * 3L), from)
-                .stream()
-                .map(PublicHoliday::getDate)
-                .collect(Collectors.toSet());
+        Set<Integer> years = Set.of(from.minusDays(days * 3L).getYear(), from.getYear());
+
+        Set<LocalDate> publicHolidays = years.stream()
+                .flatMap(year -> publicHolidayCacheService
+                        .getPublicHolidaysForYear(defaultRegion, year)
+                        .stream()
+                )
+                .collect(Collectors.toUnmodifiableSet());
 
         int counted = 0;
         LocalDate current = from.minusDays(1);
@@ -81,11 +86,14 @@ public class WorkingDayService {
 
     public LocalDate addWorkingDays (LocalDate from, int days) {
 
-        Set<LocalDate> publicHolidays = publicHolidayRepository
-                .findByRegionAndDateBetween(defaultRegion, from, from.plusDays(days * 3L))
-                .stream()
-                .map(PublicHoliday::getDate)
-                .collect(Collectors.toSet());
+        Set<Integer> years = Set.of(from.getYear(), from.plusDays(days * 3L).getYear());
+
+        Set<LocalDate> publicHolidays = years.stream()
+                .flatMap(year -> publicHolidayCacheService
+                        .getPublicHolidaysForYear(defaultRegion, year)
+                        .stream()
+                )
+                .collect(Collectors.toUnmodifiableSet());
 
         int counted = 0;
         LocalDate current = from.plusDays(1);
@@ -108,11 +116,14 @@ public class WorkingDayService {
 
     public LocalDate normaliseToWorkingDay (LocalDate date) {
 
-        Set<LocalDate> publicHolidays = publicHolidayRepository
-                .findByRegionAndDateBetween(defaultRegion, date, date.plusDays(7L))
-                .stream()
-                .map(PublicHoliday::getDate)
-                .collect(Collectors.toSet());
+        Set<Integer> years = Set.of(date.getYear(), date.plusDays(7L).getYear());
+
+        Set<LocalDate> publicHolidays = years.stream()
+                .flatMap(year -> publicHolidayCacheService
+                        .getPublicHolidaysForYear(defaultRegion, year)
+                        .stream()
+                )
+                .collect(Collectors.toUnmodifiableSet());
 
         LocalDate current = date;
 
