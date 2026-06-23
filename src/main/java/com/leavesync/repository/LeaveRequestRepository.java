@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,7 +22,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
 
     Page<LeaveRequest> findByUserIdIn(List<UUID> userIds, Pageable pageable);
 
-    List<LeaveRequest> findByUserIdAndStatus(UUID userId, LeaveStatus status);
+    List<LeaveRequest> findByUserIdAndStatusIn(UUID userId, List<LeaveStatus> statuses);
 
     List<LeaveRequest> findByUserIdAndStatusAndEndDateGreaterThanEqual(UUID userId, LeaveStatus status, LocalDate endDate);
 

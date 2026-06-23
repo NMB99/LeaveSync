@@ -227,11 +227,13 @@ public class LeaveRequestService {
                 .orElseThrow(() -> new ResourceNotFoundException("LeaveRequest", "id:", requestId.toString()));
 
         if (!request.getUserId().equals(principal.userId())) {
-            throw new ForbiddenException("You can cancel your own leave request");
+            throw new ForbiddenException("You can only cancel your own leave request");
         }
 
-        if (request.getStatus() != LeaveStatus.PENDING) {
-            throw new LeaveRequestStateException("Only PENDING leave requests can be cancelled");
+        if (request.getStatus() != LeaveStatus.PENDING
+                && request.getStatus() != LeaveStatus.ESCALATED
+                && request.getStatus() != LeaveStatus.REROUTED_TO_HR) {
+            throw new LeaveRequestStateException("Only PENDING, ESCALATED OR REROUTED_TO_HR leave requests can be cancelled");
         }
 
         LeaveStatus previousStatus = request.getStatus();
@@ -298,6 +300,7 @@ public class LeaveRequestService {
 
         User requester = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id:", request.getUserId().toString()));
+
         emailService.sendLeaveApprovalEmail(
                 requester.getEmail(),
                 requester.getFirstName(),
@@ -405,8 +408,10 @@ public class LeaveRequestService {
             throw new ForbiddenException("You cannot action your own leave request");
         }
 
-        if (request.getStatus() != LeaveStatus.PENDING && request.getStatus() != LeaveStatus.ESCALATED) {
-            throw new LeaveRequestStateException("Only PENDING or ESCALATED leave requests can be actioned");
+        if (request.getStatus() != LeaveStatus.PENDING
+                && request.getStatus() != LeaveStatus.ESCALATED
+                && request.getStatus() != LeaveStatus.REROUTED_TO_HR) {
+            throw new LeaveRequestStateException("Only PENDING, ESCALATED or REROUTED_TO_HR leave requests can be actioned");
         }
 
         switch (approver.role()) {

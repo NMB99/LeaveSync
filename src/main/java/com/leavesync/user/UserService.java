@@ -224,13 +224,16 @@ public class UserService {
             throw new BusinessRuleException("User is already deactivated");
         }
 
-        List<LeaveRequest> pendingRequest = leaveRequestRepository.findByUserIdAndStatus(userId, LeaveStatus.PENDING);
+        List<LeaveRequest> unActionedRequest = leaveRequestRepository.findByUserIdAndStatusIn(
+                userId,
+                List.of(LeaveStatus.PENDING, LeaveStatus.ESCALATED, LeaveStatus.REROUTED_TO_HR)
+        );
 
         List<LeaveRequest> approvedRequest = leaveRequestRepository
                 .findByUserIdAndStatusAndEndDateGreaterThanEqual(userId, LeaveStatus.APPROVED, LocalDate.now());
 
         List<LeaveRequest> requestToCancel = new ArrayList<>();
-        requestToCancel.addAll(pendingRequest);
+        requestToCancel.addAll(unActionedRequest);
         requestToCancel.addAll(approvedRequest);
 
         for (LeaveRequest request : requestToCancel) {
