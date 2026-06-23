@@ -59,6 +59,11 @@ public class LeaveRequestService {
             throw new InvalidLeaveRequestException("Sick leave cannot be submitted for a future date");
         }
 
+        if (leaveType.isRequiresReason()
+                && (request.reason() == null || request.reason().isBlank())) {
+            throw new InvalidLeaveRequestException("A reason is required for " + leaveType.getName() + " leave");
+        }
+
         if (request.endDate().isBefore(request.startDate())) {
             throw new InvalidLeaveRequestException("End date must be after start date");
         }
