@@ -10,6 +10,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +27,8 @@ public class WorkingDayService {
 
     public BigDecimal countWorkingDays (LocalDate from, LocalDate to) {
 
-        Set<Integer> years = Set.of(from.getYear(), to.getYear());
+        Set<Integer> years = Stream.of(from.getYear(), to.getYear())
+                .collect(Collectors.toSet());
 
         Set<LocalDate> publicHolidays = years.stream()
                 .flatMap(year -> publicHolidayCacheService
@@ -55,7 +57,8 @@ public class WorkingDayService {
 
     public LocalDate subtractWorkingDays (LocalDate from, int days) {
 
-        Set<Integer> years = Set.of(from.minusDays(days * 3L).getYear(), from.getYear());
+        Set<Integer> years = Stream.of(from.minusDays(days * 3L).getYear(), from.getYear())
+                .collect(Collectors.toSet());
 
         Set<LocalDate> publicHolidays = years.stream()
                 .flatMap(year -> publicHolidayCacheService
@@ -86,7 +89,8 @@ public class WorkingDayService {
 
     public LocalDate addWorkingDays (LocalDate from, int days) {
 
-        Set<Integer> years = Set.of(from.getYear(), from.plusDays(days * 3L).getYear());
+        Set<Integer> years = Stream.of(from.getYear(), from.plusDays(days * 3L).getYear())
+                .collect(Collectors.toSet());
 
         Set<LocalDate> publicHolidays = years.stream()
                 .flatMap(year -> publicHolidayCacheService
@@ -116,7 +120,8 @@ public class WorkingDayService {
 
     public LocalDate normaliseToWorkingDay (LocalDate date) {
 
-        Set<Integer> years = Set.of(date.getYear(), date.plusDays(7L).getYear());
+        Set<Integer> years = Stream.of(date.getYear(), date.plusDays(7L).getYear())
+                .collect(Collectors.toSet());
 
         Set<LocalDate> publicHolidays = years.stream()
                 .flatMap(year -> publicHolidayCacheService
