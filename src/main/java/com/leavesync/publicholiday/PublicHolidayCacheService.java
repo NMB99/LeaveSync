@@ -18,7 +18,7 @@ public class PublicHolidayCacheService {
     private final PublicHolidayRepository publicHolidayRepository;
 
     @Cacheable(value = "holidays", key = "#region + '_' + #year")
-    public Set<LocalDate> getPublicHolidaysForYear(String region, int year) {
+    public List<LocalDate> getPublicHolidaysForYear(String region, int year) {
 
         LocalDate from = LocalDate.of(year, 1, 1);
         LocalDate to = LocalDate.of(year, 12, 31);
@@ -27,6 +27,6 @@ public class PublicHolidayCacheService {
 
         return holidays.stream()
                 .map(PublicHoliday::getDate)
-                .collect(Collectors.toUnmodifiableSet());
+                .toList();
     }
 }

@@ -136,15 +136,19 @@ public class LeaveRequestService {
 
         leaveRequestRepository.save(leaveRequest);
 
-        if (approverResult.rerouted()) {
-            AuditLog newLog = new AuditLog();
-            newLog.setLeaveRequestId(leaveRequest.getId());
-            newLog.setPreviousStatus(null);
-            newLog.setNewStatus(LeaveStatus.REROUTED_TO_HR);
-            newLog.setActionedBy(null);
-            newLog.setNotes("Leave request automatically rerouted to HR - no active manager found");
-            auditLogRepository.save(newLog);
-        }
+        AuditLog newLog = new AuditLog();
+        newLog.setLeaveRequestId(leaveRequest.getId());
+        newLog.setPreviousStatus(null);
+        newLog.setNewStatus(
+                approverResult.rerouted() ? LeaveStatus.REROUTED_TO_HR : LeaveStatus.PENDING
+        );
+        newLog.setActionedBy(null);
+        newLog.setNotes(
+                approverResult.rerouted()
+                        ? "Leave request automatically rerouted to HR - no active manager found"
+                        : "Leave request submitted by " + submitter.getFirstName() + " " + submitter.getLastName()
+        );
+        auditLogRepository.save(newLog);
 
         if (leaveType.isRequiresBalanceTracking() && balance != null) {
             balance.setPendingDays(balance.getPendingDays().add(requestedDays));
