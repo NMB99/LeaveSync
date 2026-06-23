@@ -1,7 +1,10 @@
 package com.leavesync.report;
 
+import com.leavesync.common.PageResponse;
 import com.leavesync.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -14,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -25,42 +27,54 @@ public class ReportController {
     private final ReportService reportService;
 
     @GetMapping("/whos-off")
-    public ResponseEntity<List<WhosOffResponse>> getWhosOff(
+    public ResponseEntity<PageResponse<WhosOffResponse>> getWhosOff(
             @AuthenticationPrincipal AuthenticatedUser principal,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(reportService.getWhosOff(principal, date));
+                .body(reportService.getWhosOff(principal, date, pageable));
     }
 
     @GetMapping("/balance-summary")
-    public ResponseEntity<List<BalanceSummaryResponse>> getBalanceSummary(
+    public ResponseEntity<PageResponse<BalanceSummaryResponse>> getBalanceSummary(
             @AuthenticationPrincipal AuthenticatedUser principal,
-            @RequestParam int year
+            @RequestParam int year,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(reportService.getBalanceSummary(principal, year));
+                .body(reportService.getBalanceSummary(principal, year, pageable));
     }
 
     @GetMapping("/leave-history")
-    public ResponseEntity<List<LeaveHistoryResponse>> getLeaveHistory(
+    public ResponseEntity<PageResponse<LeaveHistoryResponse>> getLeaveHistory(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(reportService.getLeaveHistory(principal, userId, startDate, endDate));
+                .body(reportService.getLeaveHistory(principal, userId, startDate, endDate, pageable));
     }
 
     @GetMapping("/absence-patterns")
-    public ResponseEntity<List<AbsencePatternResponse>> getAbsencePatterns(
+    public ResponseEntity<PageResponse<AbsencePatternResponse>> getAbsencePatterns(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(reportService.getAbsencePatterns(principal, startDate, endDate));
+                .body(reportService.getAbsencePatterns(principal, startDate, endDate, pageable));
     }
 
     @GetMapping("/whos-off/export-csv")
@@ -94,7 +108,7 @@ public class ReportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
     ) {
-        String csv = CsvExportUtil.exportToCsv(reportService.getLeaveHistory(principal, userId, startDate, endDate));
+        String csv = CsvExportUtil.exportLeaveHistoryToCsv(reportService.getLeaveHistory(principal, userId, startDate, endDate));
         return ResponseEntity.status(HttpStatus.OK)
                 .header(HttpHeaders.CONTENT_TYPE, "text/csv")
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"leave-history-report.csv\"")
