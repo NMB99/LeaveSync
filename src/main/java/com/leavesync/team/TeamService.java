@@ -90,7 +90,14 @@ public class TeamService {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new ResourceNotFoundException("Team", "id", teamId.toString()));
 
+
         if (request.name() != null) {
+            if (request.name().isBlank()) {
+                throw new BusinessRuleException("Team name cannot be empty");
+            }
+            if (!team.getName().equalsIgnoreCase(request.name()) && teamRepository.existsByName(request.name())) {
+                throw new ConflictException("A team with name " + request.name() + " already exists");
+            }
             team.setName(request.name());
         }
 

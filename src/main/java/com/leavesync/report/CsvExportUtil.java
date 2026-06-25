@@ -42,16 +42,16 @@ public class CsvExportUtil {
                 .flatMap(response -> response.statusHistory().stream()
                         .map(entry -> String.join(",",
                                 response.leaveRequestId().toString(),
-                                response.employeeName(),
+                                sanitise(response.employeeName()),
                                 response.leaveType(),
                                 response.startDate().toString(),
                                 response.endDate().toString(),
                                 entry.auditLogId().toString(),
                                 entry.previousStatus() != null ? entry.previousStatus().toString() : "",
                                 entry.newStatus().toString(),
-                                entry.actionedBy(),
+                                sanitise(entry.actionedBy()),
                                 entry.changedAt().toString(),
-                                entry.notes() != null ? entry.notes() : ""
+                                sanitise(entry.notes() != null ? entry.notes() : "")
                         ))
                 )
                 .collect(Collectors.joining("\n"));
@@ -70,7 +70,7 @@ public class CsvExportUtil {
                 .flatMap(pattern -> pattern.instances().stream()
                         .map(instance -> String.join(",",
                                 pattern.userId().toString(),
-                                pattern.employeeName(),
+                                sanitise(pattern.employeeName()),
                                 String.valueOf(pattern.instanceCount()),
                                 instance.leaveRequestId().toString(),
                                 instance.startDate().toString(),
@@ -89,12 +89,24 @@ public class CsvExportUtil {
                 .map(component -> {
                     try {
                         Object value = component.getAccessor().invoke(item);
-                        return value != null ? value.toString() : "";
+                        return sanitise(value != null ? value.toString() : "");
                     }
                     catch (Exception e) {
                         return "";
                     }
                 })
                 .collect(Collectors.joining(","));
+    }
+
+    private static String sanitise(String value) {
+
+        if (value == null)
+            return "";
+
+        if (value.startsWith("=") || value.startsWith("+")
+                || value.startsWith("-") || value.startsWith("@")) {
+            return "'" + value;
+        }
+        return value;
     }
 }

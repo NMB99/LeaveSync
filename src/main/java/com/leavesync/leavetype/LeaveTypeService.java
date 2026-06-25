@@ -1,6 +1,7 @@
 package com.leavesync.leavetype;
 
 import com.leavesync.entity.LeaveType;
+import com.leavesync.exception.ConflictException;
 import com.leavesync.exception.ResourceNotFoundException;
 import com.leavesync.repository.LeaveTypeRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,11 @@ public class LeaveTypeService {
 
         LeaveType type = leaveTypeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("LeaveType", "id", id.toString()));
+
+        if (!type.getName().equalsIgnoreCase(request.name())
+                && leaveTypeRepository.existsByName(request.name())) {
+            throw new ConflictException("Leave type with name " + request.name() + " already exists");
+        }
 
         type.setName(request.name());
         type.setRequiresHrApproval(request.requiresHrApproval());

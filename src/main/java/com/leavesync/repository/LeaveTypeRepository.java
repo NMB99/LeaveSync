@@ -12,4 +12,5 @@ public interface LeaveTypeRepository extends JpaRepository<LeaveType, UUID> {
 
     Optional<LeaveType> findByCode(String code);
 
+    boolean existsByName(String name);
 }
