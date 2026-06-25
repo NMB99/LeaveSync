@@ -22,6 +22,7 @@ public class LeaveRequestController {
     private final LeaveRequestService leaveRequestService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR')")
     public ResponseEntity<LeaveRequestResponse> createLeaveRequest(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @Valid @RequestBody SubmitLeaveRequest request
@@ -34,13 +35,12 @@ public class LeaveRequestController {
     @GetMapping
     public ResponseEntity<PageResponse<LeaveRequestResponse>> getLeaveRequests(
             @AuthenticationPrincipal AuthenticatedUser principal,
-            @RequestParam(required = false) UUID userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(leaveRequestService.getLeaveRequests(principal, userId, pageable));
+                .body(leaveRequestService.getLeaveRequests(principal, pageable));
     }
 
     @GetMapping("/{id}")

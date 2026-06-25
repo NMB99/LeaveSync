@@ -45,6 +45,10 @@ public class LeaveRequestService {
         User submitter = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id:", userId.toString()));
 
+        if (submitter.getRole() == Role.ADMIN) {
+            throw new ForbiddenException("Admin accounts cannot submit leave requests");
+        }
+
         LeaveType leaveType = leaveTypeRepository.findById(request.leaveTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("LeaveType", "id:", request.leaveTypeId().toString()));
 
@@ -135,6 +139,7 @@ public class LeaveRequestService {
         leaveRequest.setStatus(
                 approverResult.rerouted() ? LeaveStatus.REROUTED_TO_HR : LeaveStatus.PENDING
         );
+        leaveRequest.setAssignedTo(approverResult.assignedTo());
         leaveRequest.setNoticePeriodWarning(noticePeriodWarning);
         leaveRequest.setOverlapWarning(overlapWarning);
         leaveRequest.setEscalationStartDate(workingDayService.normaliseToWorkingDay(today));
@@ -147,6 +152,7 @@ public class LeaveRequestService {
         newLog.setNewStatus(
                 approverResult.rerouted() ? LeaveStatus.REROUTED_TO_HR : LeaveStatus.PENDING
         );
+        newLog.setAssignedTo(approverResult.assignedTo());
         newLog.setActionedBy(null);
         newLog.setNotes(
                 approverResult.rerouted()
@@ -177,7 +183,7 @@ public class LeaveRequestService {
         return LeaveRequestResponse.from(leaveRequest, submitter, leaveType, balanceWarning);
     }
 
-    public PageResponse<LeaveRequestResponse> getLeaveRequests(AuthenticatedUser principal, UUID userId, Pageable pageable) {
+    public PageResponse<LeaveRequestResponse> getLeaveRequests(AuthenticatedUser principal, Pageable pageable) {
 
         Page<LeaveRequest> requests = switch (principal.role()) {
             case EMPLOYEE -> leaveRequestRepository.findByUserId(principal.userId(), pageable);
@@ -186,15 +192,24 @@ public class LeaveRequestService {
                         .stream()
                         .map(Team::getId)
                         .toList();
-                List<UUID> teamMembersIds = new ArrayList<>(userRepository.findIdsByTeamIdIn(teamIds));
-                if (!teamMembersIds.contains(principal.userId())) {
-                    teamMembersIds.add(principal.userId());
-                }
-                yield leaveRequestRepository.findByUserIdIn(teamMembersIds, pageable);
+                List<UUID> teamMemberIds = userRepository.findIdsByTeamIdIn(teamIds);
+                yield  leaveRequestRepository.findByAssignedToAndStatusInAndUserIdIn(
+                        Role.MANAGER,
+                        List.of(LeaveStatus.PENDING),
+                        teamMemberIds,
+                        pageable
+                );
             }
-            case HR, ADMIN -> userId != null
-                    ? leaveRequestRepository.findByUserId(userId, pageable)
-                    : leaveRequestRepository.findAll(pageable);
+            case HR -> leaveRequestRepository.findByAssignedToAndStatusIn(
+                    Role.HR,
+                    List.of(LeaveStatus.PENDING, LeaveStatus.REROUTED_TO_HR, LeaveStatus.ESCALATED),
+                    pageable
+            );
+            case ADMIN -> leaveRequestRepository.findByAssignedToAndStatusIn(
+                    Role.ADMIN,
+                    List.of(LeaveStatus.PENDING, LeaveStatus.REROUTED_TO_HR, LeaveStatus.ESCALATED),
+                    pageable
+            );
         };
 
         Map<UUID, User> userMap = userRepository
@@ -289,6 +304,7 @@ public class LeaveRequestService {
         newLog.setLeaveRequestId(request.getId());
         newLog.setPreviousStatus(previousStatus);
         newLog.setNewStatus(LeaveStatus.CANCELLED);
+        newLog.setAssignedTo(principal.role());
         newLog.setActionedBy(principal.userId());
         newLog.setNotes("Leave request cancelled by " + principal.email());
         auditLogRepository.save(newLog);
@@ -326,6 +342,7 @@ public class LeaveRequestService {
         newLog.setLeaveRequestId(request.getId());
         newLog.setPreviousStatus(previousStatus);
         newLog.setNewStatus(LeaveStatus.APPROVED);
+        newLog.setAssignedTo(principal.role());
         newLog.setActionedBy(principal.userId());
         newLog.setNotes("Leave request approved by " + principal.email());
         auditLogRepository.save(newLog);
@@ -390,6 +407,7 @@ public class LeaveRequestService {
         newLog.setLeaveRequestId(request.getId());
         newLog.setPreviousStatus(previousStatus);
         newLog.setNewStatus(LeaveStatus.REJECTED);
+        newLog.setAssignedTo(principal.role());
         newLog.setActionedBy(principal.userId());
         newLog.setNotes("Leave request rejected by " + principal.email() + ". Reason: " + rejectRequest.reason());
         auditLogRepository.save(newLog);
@@ -412,26 +430,35 @@ public class LeaveRequestService {
     private ApproverResult findLeaveRequestApprover(User submitter, LeaveType leaveType) {
 
         if (leaveType.isRequiresHrApproval() && (submitter.getRole() == Role.EMPLOYEE || submitter.getRole() == Role.MANAGER)) {
-            return new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), false);
+            return new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), false, Role.HR);
         }
 
         return switch (submitter.getRole()) {
             case EMPLOYEE -> {
                 if (submitter.getTeamId() == null) {
-                    yield new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), true);
+                    yield new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), true, Role.HR);
                 }
                 Optional<Team> team = teamRepository.findById(submitter.getTeamId());
                 if (team.isEmpty()) {
-                    yield new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), true);
+                    yield new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), true, Role.HR);
                 }
 
                 Optional<User> manager = userRepository.findByIdAndIsActiveTrue(team.get().getManagerId());
                 yield manager
-                        .map(m -> new ApproverResult(List.of(m), false))
-                        .orElseGet(() -> new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), true));
+                        .map(m -> new ApproverResult(List.of(m), false, Role.MANAGER))
+                        .orElseGet(() -> new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), true, Role.HR));
             }
-            case MANAGER, ADMIN -> new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), false);
-            case HR -> new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN), false);
+            case MANAGER -> new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.HR), false, Role.HR);
+            case HR -> {
+                List<User> otherHrUsers = userRepository.findAllByRoleAndIsActiveTrue(Role.HR)
+                        .stream()
+                        .filter(u -> !u.getId().equals(submitter.getId()))
+                        .toList();
+                yield  otherHrUsers.isEmpty()
+                        ? new ApproverResult(userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN), false, Role.ADMIN)
+                        : new ApproverResult(otherHrUsers, false, Role.HR);
+                }
+            case ADMIN -> throw new ForbiddenException("Admin accounts cannot submit leave requests");
         };
     }
 

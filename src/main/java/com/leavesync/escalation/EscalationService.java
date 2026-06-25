@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +28,7 @@ public class EscalationService {
     private final WorkingDayService workingDayService;
     private final EmailService emailService;
 
+    @Transactional
     public void sendDay3Reminders() {
 
         LocalDate today = LocalDate.now();
@@ -47,7 +47,37 @@ public class EscalationService {
                 if (leaveType == null)
                     continue;
 
-                List<User> approvers = resolveApprover(requester, leaveType);
+                LeaveStatus previousStatus = request.getStatus();
+
+                List<User> approvers = switch (request.getAssignedTo()) {
+                    case MANAGER -> {
+                        if (requester.getTeamId() == null) {
+                            request.setAssignedTo(Role.HR);
+                            leaveRequestRepository.save(request);
+                            logIt(request, previousStatus, "Request reassigned to HR - manager no longer available");
+                            yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+                        }
+                        Optional<Team> team = teamRepository.findById(requester.getTeamId());
+                        if (team.isEmpty()) {
+                            request.setAssignedTo(Role.HR);
+                            leaveRequestRepository.save(request);
+                            logIt(request, previousStatus, "Request reassigned to HR - manager no longer available");
+                            yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+                        }
+                        Optional<User> manager = userRepository.findByIdAndIsActiveTrue(team.get().getManagerId());
+                        if (manager.isEmpty()) {
+                            request.setAssignedTo(Role.HR);
+                            leaveRequestRepository.save(request);
+                            logIt(request, previousStatus, "Request reassigned to HR - manager no longer available");
+                            yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+                        }
+                        yield List.of(manager.get());
+                    }
+                    case HR -> userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+                    case ADMIN -> userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN);
+                    case EMPLOYEE -> List.of();
+                };
+
                 for (User approver : approvers) {
                     emailService.sendDay3ReminderEmail(
                             approver.getEmail(),
@@ -85,27 +115,39 @@ public class EscalationService {
                     continue;
 
                 LeaveStatus previousStatus = request.getStatus();
-                request.setStatus(LeaveStatus.ESCALATED);
-                leaveRequestRepository.save(request);
 
-                AuditLog newLog = new AuditLog();
-                newLog.setLeaveRequestId(request.getId());
-                newLog.setPreviousStatus(previousStatus);
-                newLog.setNewStatus(LeaveStatus.ESCALATED);
-                newLog.setActionedBy(null);
-                newLog.setNotes("Leave request automatically escalated to HR after 5 working days without action");
-                auditLogRepository.save(newLog);
+                switch (request.getAssignedTo()) {
+                    case MANAGER, ADMIN -> {
+                        request.setStatus(LeaveStatus.ESCALATED);
+                        request.setAssignedTo(Role.HR);
+                        leaveRequestRepository.save(request);
 
-                List<User> hrUsers = userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
-                for (User hr : hrUsers) {
-                    emailService.sendDay5EscalationEmail(
-                            hr.getEmail(),
-                            hr.getFirstName(),
-                            requester.getFirstName() + " " + requester.getLastName(),
-                            leaveType.getName(),
-                            request.getStartDate().toString(),
-                            request.getEndDate().toString()
-                    );
+                        String message = "Leave request automatically escalated to HR after 5 working days without action";
+                        logIt(request, previousStatus, message);
+
+                        userRepository.findAllByRoleAndIsActiveTrue(Role.HR).forEach(hr ->
+                                emailService.sendDay5EscalationEmail(
+                                        hr.getEmail(),
+                                        hr.getFirstName(),
+                                        requester.getFirstName() + " " + requester.getLastName(),
+                                        leaveType.getName(),
+                                        request.getStartDate().toString(),
+                                        request.getEndDate().toString()
+                                )
+                        );
+                    }
+                    case HR ->
+                            userRepository.findAllByRoleAndIsActiveTrue(Role.HR).forEach(hr ->
+                                    emailService.sendDay5EscalationEmail(
+                                            hr.getEmail(),
+                                            hr.getFirstName(),
+                                            requester.getFirstName() + " " + requester.getLastName(),
+                                            leaveType.getName(),
+                                            request.getStartDate().toString(),
+                                            request.getEndDate().toString()
+                                    )
+                            );
+                    case EMPLOYEE -> {}
                 }
             }
             catch (Exception e) {
@@ -134,19 +176,22 @@ public class EscalationService {
                 if (leaveType == null)
                     continue;
 
-                List<User> approvers;
-
-                if (request.getStatus() == LeaveStatus.ESCALATED) {
-                    approvers = userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
-                }
-                else {
-                    approvers = new ArrayList<>(resolveApprover(requester, leaveType));
-                    List<User> hrUsers = userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
-                    approvers.addAll(hrUsers);
-                    approvers = approvers.stream()
-                            .distinct()
-                            .toList();
-                }
+                List<User> approvers = switch (request.getAssignedTo()) {
+                    case MANAGER -> {
+                        if (requester.getTeamId() == null) {
+                            yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+                        }
+                        Optional<Team> team = teamRepository.findById(requester.getTeamId());
+                        if (team.isEmpty()) {
+                            yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+                        }
+                        Optional<User> manager = userRepository.findByIdAndIsActiveTrue(team.get().getManagerId());
+                        yield manager.map(List::of).orElseGet(() -> userRepository.findAllByRoleAndIsActiveTrue(Role.HR));
+                    }
+                    case HR -> userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
+                    case ADMIN -> userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN);
+                    case EMPLOYEE -> List.of();
+                };
 
                 for (User approver : approvers) {
                     emailService.sendUrgentLeaveNotificationEmail(
@@ -165,29 +210,14 @@ public class EscalationService {
         }
     }
 
-    private List<User> resolveApprover(User requester, LeaveType leaveType) {
-
-        if (leaveType.isRequiresHrApproval() &&
-                (requester.getRole() == Role.EMPLOYEE || requester.getRole() == Role.MANAGER)) {
-            return userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
-        }
-
-        return switch (requester.getRole()) {
-            case EMPLOYEE -> {
-                if (requester.getTeamId() == null) {
-                    yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
-                }
-                Optional<Team> team = teamRepository.findById(requester.getTeamId());
-                if (team.isEmpty()) {
-                    yield userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
-                }
-                Optional<User> manager = userRepository.findByIdAndIsActiveTrue(team.get().getManagerId());
-                yield manager
-                        .map(List::of)
-                        .orElseGet(() -> userRepository.findAllByRoleAndIsActiveTrue(Role.HR));
-            }
-            case MANAGER, ADMIN -> userRepository.findAllByRoleAndIsActiveTrue(Role.HR);
-            case HR -> userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN);
-        };
+    private void logIt(LeaveRequest request, LeaveStatus previousStatus, String message) {
+        AuditLog rerouteLog = new AuditLog();
+        rerouteLog.setLeaveRequestId(request.getId());
+        rerouteLog.setPreviousStatus(previousStatus);
+        rerouteLog.setNewStatus(request.getStatus());
+        rerouteLog.setAssignedTo(request.getAssignedTo());
+        rerouteLog.setActionedBy(null);
+        rerouteLog.setNotes(message);
+        auditLogRepository.save(rerouteLog);
     }
 }

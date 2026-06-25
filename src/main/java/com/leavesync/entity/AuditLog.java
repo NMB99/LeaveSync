@@ -1,6 +1,7 @@
 package com.leavesync.entity;
 
 import com.leavesync.enums.LeaveStatus;
+import com.leavesync.enums.Role;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -24,13 +25,17 @@ public class AuditLog {
     @Column(name = "leave_request_id", nullable = false, updatable = false)
     private UUID leaveRequestId;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "previous_status", updatable = false)
+    @Enumerated(EnumType.STRING)
     private LeaveStatus previousStatus;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "new_status", nullable = false, updatable = false)
+    @Enumerated(EnumType.STRING)
     private LeaveStatus newStatus;
+
+    @Column(name = "assigned_to", updatable = false)
+    @Enumerated(EnumType.STRING)
+    private Role assignedTo;
 
     @Column(name = "actioned_by", updatable = false)
     private UUID actionedBy;
