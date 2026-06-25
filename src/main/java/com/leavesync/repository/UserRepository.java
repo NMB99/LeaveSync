@@ -33,4 +33,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<UUID> findIdsByTeamIdIn(List<UUID> teamIds);
 
     Page<User> findByTeamIdIn(List<UUID> teamIds, Pageable pageable);
+
+    long countByRoleAndIsActiveTrue(Role role);
 }

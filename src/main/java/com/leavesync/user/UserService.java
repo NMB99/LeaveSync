@@ -182,7 +182,7 @@ public class UserService {
                 }
             }
             default -> throw new ForbiddenException("You are not authorized to view this resource");
-        };
+        }
 
         return UserResponse.from(user);
     }
@@ -224,6 +224,10 @@ public class UserService {
             throw new BusinessRuleException("Cannot deactivate user - they are currently managing a team. Reassign the team first.");
         }
 
+        if (user.getRole() == Role.ADMIN && userRepository.countByRoleAndIsActiveTrue(Role.ADMIN) <= 1) {
+            throw new BusinessRuleException("Cannot deactivate the last admin account");
+        }
+
         if (!user.isActive()) {
             throw new BusinessRuleException("User is already deactivated");
         }
@@ -249,6 +253,7 @@ public class UserService {
             auditLog.setLeaveRequestId(request.getId());
             auditLog.setPreviousStatus(previousStatus);
             auditLog.setNewStatus(LeaveStatus.CANCELLED);
+            auditLog.setAssignedTo(null);
             auditLog.setActionedBy(null);
             auditLog.setNotes("User account deactivated");
             auditLogRepository.save(auditLog);

@@ -1,6 +1,7 @@
 package com.leavesync.entity;
 
 import com.leavesync.enums.LeaveStatus;
+import com.leavesync.enums.Role;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -36,9 +37,13 @@ public class LeaveRequest extends BaseEntity {
     @Column(name = "total_working_days", nullable = false, precision = 4, scale = 1)
     private BigDecimal totalWorkingDays;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private LeaveStatus status;
+
+    @Column(name = "assigned_to", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private Role assignedTo;
 
     @Column(name = "actioned_by")
     private UUID actionedBy;
