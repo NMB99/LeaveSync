@@ -1,6 +1,8 @@
 package com.leavesync.leaverequest;
 
 import com.leavesync.entity.LeaveRequest;
+import com.leavesync.entity.LeaveType;
+import com.leavesync.entity.User;
 import com.leavesync.enums.LeaveStatus;
 
 import java.math.BigDecimal;
@@ -10,8 +12,8 @@ import java.util.UUID;
 public record LeaveRequestResponse(
 
         UUID id,
-        UUID userId,
-        UUID leaveTypeId,
+        String employeeName,
+        String leaveTypeName,
         LocalDate startDate,
         LocalDate endDate,
         boolean isHalfDay,
@@ -23,11 +25,11 @@ public record LeaveRequestResponse(
         boolean overlapWarning
 
 ) {
-    public static LeaveRequestResponse from(LeaveRequest request) {
+    public static LeaveRequestResponse from(LeaveRequest request, User user, LeaveType leaveType) {
         return new LeaveRequestResponse(
                 request.getId(),
-                request.getUserId(),
-                request.getLeaveTypeId(),
+                user.getFirstName() + " " + user.getLastName(),
+                leaveType.getName(),
                 request.getStartDate(),
                 request.getEndDate(),
                 request.isHalfDay(),
@@ -40,11 +42,11 @@ public record LeaveRequestResponse(
         );
     }
 
-    public static LeaveRequestResponse from(LeaveRequest request, boolean balanceWarning) {
+    public static LeaveRequestResponse from(LeaveRequest request, User user, LeaveType leaveType, boolean balanceWarning) {
         return new LeaveRequestResponse(
                 request.getId(),
-                request.getUserId(),
-                request.getLeaveTypeId(),
+                user.getFirstName() + " " + user.getLastName(),
+                leaveType.getName(),
                 request.getStartDate(),
                 request.getEndDate(),
                 request.isHalfDay(),
