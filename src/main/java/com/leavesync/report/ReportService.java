@@ -5,6 +5,7 @@ import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
 import com.leavesync.exception.ForbiddenException;
 import com.leavesync.exception.ResourceNotFoundException;
+import com.leavesync.leavebalance.LeaveBalanceResponse;
 import com.leavesync.repository.*;
 import com.leavesync.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
@@ -105,19 +106,10 @@ public class ReportService {
     }
 
 
-    public List<BalanceSummaryResponse> getBalanceSummary(AuthenticatedUser principal, int year) {
+    public List<LeaveBalanceResponse> getBalanceSummary(AuthenticatedUser principal, int year) {
 
         List<LeaveBalance> balances = switch (principal.role()) {
-            case EMPLOYEE -> throw new ForbiddenException("Employees are not authorized to view/access this resource");
-            case MANAGER -> {
-                List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
-                        .stream()
-                        .map(Team::getId)
-                        .toList();
-                List<UUID> userIds = userRepository.findIdsByTeamIdIn(teamIds);
-                yield leaveBalanceRepository
-                        .findByUserIdInAndYear(userIds, year);
-            }
+            case EMPLOYEE, MANAGER -> throw new ForbiddenException("You are not authorized to view/access this resource");
             case HR, ADMIN -> leaveBalanceRepository.findByYear(year);
         };
 
@@ -128,23 +120,14 @@ public class ReportService {
         ).stream().collect(Collectors.toMap(User::getId, Function.identity()));
 
         return balances.stream()
-                .map(b -> BalanceSummaryResponse.from(b, userMap.get(b.getUserId())))
+                .map(b -> LeaveBalanceResponse.from(b, userMap.get(b.getUserId())))
                 .toList();
     }
 
-    public PageResponse<BalanceSummaryResponse> getBalanceSummary(AuthenticatedUser principal, int year, Pageable pageable) {
+    public PageResponse<LeaveBalanceResponse> getBalanceSummary(AuthenticatedUser principal, int year, Pageable pageable) {
 
         Page<LeaveBalance> balances = switch (principal.role()) {
-            case EMPLOYEE -> throw new ForbiddenException("Employees are not authorized to view/access this resource");
-            case MANAGER -> {
-                List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
-                        .stream()
-                        .map(Team::getId)
-                        .toList();
-                List<UUID> userIds = userRepository.findIdsByTeamIdIn(teamIds);
-                yield leaveBalanceRepository
-                        .findByUserIdInAndYear(userIds, year, pageable);
-            }
+            case EMPLOYEE, MANAGER -> throw new ForbiddenException("You are not authorized to view/access this resource");
             case HR, ADMIN -> leaveBalanceRepository.findByYear(year, pageable);
         };
 
@@ -155,7 +138,7 @@ public class ReportService {
         ).stream().collect(Collectors.toMap(User::getId, Function.identity()));
 
         return PageResponse.from(
-                balances.map(b -> BalanceSummaryResponse.from(b, userMap.get(b.getUserId())))
+                balances.map(b -> LeaveBalanceResponse.from(b, userMap.get(b.getUserId())))
         );
     }
 

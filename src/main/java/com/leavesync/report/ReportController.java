@@ -1,6 +1,7 @@
 package com.leavesync.report;
 
 import com.leavesync.common.PageResponse;
+import com.leavesync.leavebalance.LeaveBalanceResponse;
 import com.leavesync.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -9,6 +10,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,6 +29,7 @@ public class ReportController {
     private final ReportService reportService;
 
     @GetMapping("/whos-off")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'HR')")
     public ResponseEntity<PageResponse<WhosOffResponse>> getWhosOff(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
@@ -39,7 +42,8 @@ public class ReportController {
     }
 
     @GetMapping("/balance-summary")
-    public ResponseEntity<PageResponse<BalanceSummaryResponse>> getBalanceSummary(
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    public ResponseEntity<PageResponse<LeaveBalanceResponse>> getBalanceSummary(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam int year,
             @RequestParam(defaultValue = "0") int page,
@@ -51,6 +55,7 @@ public class ReportController {
     }
 
     @GetMapping("/leave-history")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<PageResponse<LeaveHistoryResponse>> getLeaveHistory(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) UUID userId,
@@ -65,6 +70,7 @@ public class ReportController {
     }
 
     @GetMapping("/absence-patterns")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<PageResponse<AbsencePatternResponse>> getAbsencePatterns(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -78,6 +84,7 @@ public class ReportController {
     }
 
     @GetMapping("/whos-off/export-csv")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'HR')")
     public ResponseEntity<String> exportWhosOffAsCsv(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
@@ -90,6 +97,7 @@ public class ReportController {
     }
 
     @GetMapping("/balance-summary/export-csv")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<String> exportBalanceSummaryAsCsv(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam int year
@@ -102,6 +110,7 @@ public class ReportController {
     }
 
     @GetMapping("/leave-history/export-csv")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<String> exportLeaveHistoryAsCsv(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) UUID userId,
@@ -116,6 +125,7 @@ public class ReportController {
     }
 
     @GetMapping("/absence-patterns/export-csv")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<String> exportAbsencePatternsAsCsv(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,

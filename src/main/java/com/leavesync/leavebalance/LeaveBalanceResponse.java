@@ -1,4 +1,4 @@
-package com.leavesync.report;
+package com.leavesync.leavebalance;
 
 import com.leavesync.entity.LeaveBalance;
 import com.leavesync.entity.User;
@@ -6,7 +6,7 @@ import com.leavesync.entity.User;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-public record BalanceSummaryResponse(
+public record LeaveBalanceResponse(
 
         UUID userId,
         String employeeName,
@@ -18,8 +18,8 @@ public record BalanceSummaryResponse(
         BigDecimal remainingBalance
 
 ) {
-    public static BalanceSummaryResponse from(LeaveBalance balance, User user) {
-        return new BalanceSummaryResponse(
+    public static LeaveBalanceResponse from(LeaveBalance balance, User user) {
+        return new LeaveBalanceResponse(
                 user.getId(),
                 user.getFirstName() + " " + user.getLastName(),
                 balance.getYear(),
