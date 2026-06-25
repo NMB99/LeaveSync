@@ -12,6 +12,8 @@ import java.util.UUID;
 public record LeaveRequestResponse(
 
         UUID id,
+        UUID userId,
+        UUID leaveTypeId,
         String employeeName,
         String leaveTypeName,
         LocalDate startDate,
@@ -28,6 +30,8 @@ public record LeaveRequestResponse(
     public static LeaveRequestResponse from(LeaveRequest request, User user, LeaveType leaveType) {
         return new LeaveRequestResponse(
                 request.getId(),
+                request.getUserId(),
+                request.getLeaveTypeId(),
                 user.getFirstName() + " " + user.getLastName(),
                 leaveType.getName(),
                 request.getStartDate(),
@@ -45,6 +49,8 @@ public record LeaveRequestResponse(
     public static LeaveRequestResponse from(LeaveRequest request, User user, LeaveType leaveType, boolean balanceWarning) {
         return new LeaveRequestResponse(
                 request.getId(),
+                request.getUserId(),
+                request.getLeaveTypeId(),
                 user.getFirstName() + " " + user.getLastName(),
                 leaveType.getName(),
                 request.getStartDate(),

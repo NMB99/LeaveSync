@@ -21,10 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -189,7 +186,10 @@ public class LeaveRequestService {
                         .stream()
                         .map(Team::getId)
                         .toList();
-                List<UUID> teamMembersIds = userRepository.findIdsByTeamIdIn(teamIds);
+                List<UUID> teamMembersIds = new ArrayList<>(userRepository.findIdsByTeamIdIn(teamIds));
+                if (!teamMembersIds.contains(principal.userId())) {
+                    teamMembersIds.add(principal.userId());
+                }
                 yield leaveRequestRepository.findByUserIdIn(teamMembersIds, pageable);
             }
             case HR, ADMIN -> userId != null
@@ -229,6 +229,9 @@ public class LeaveRequestService {
                 }
             }
             case MANAGER -> {
+                if (request.getUserId().equals(principal.userId())) {
+                    break;
+                }
                 List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
                         .stream()
                         .map(Team::getId)
