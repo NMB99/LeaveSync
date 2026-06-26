@@ -183,6 +183,26 @@ public class LeaveRequestService {
         return LeaveRequestResponse.from(leaveRequest, submitter, leaveType, balanceWarning);
     }
 
+    public PageResponse<LeaveRequestResponse> getMyLeaveRequests(UUID userId, Pageable pageable) {
+        Page<LeaveRequest> requests = leaveRequestRepository.findByUserId(userId, pageable);
+
+        Map<UUID, User> userMap = userRepository
+                .findAllById(requests.map(LeaveRequest::getUserId).toList())
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        Map<UUID, LeaveType> leaveTypeMap = leaveTypeRepository
+                .findAllById(requests.map(LeaveRequest::getLeaveTypeId).stream().toList())
+                .stream()
+                .collect(Collectors.toMap(LeaveType::getId, Function.identity()));
+
+        return PageResponse.from(requests.map(leaveRequest -> {
+            User requestOwner = userMap.get(leaveRequest.getUserId());
+            LeaveType leaveType = leaveTypeMap.get(leaveRequest.getLeaveTypeId());
+            return LeaveRequestResponse.from(leaveRequest, requestOwner, leaveType);
+        }));
+    }
+
     public PageResponse<LeaveRequestResponse> getLeaveRequests(AuthenticatedUser principal, Pageable pageable) {
 
         Page<LeaveRequest> requests = switch (principal.role()) {
