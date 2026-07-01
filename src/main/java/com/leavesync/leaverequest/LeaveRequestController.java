@@ -32,6 +32,17 @@ public class LeaveRequestController {
                 .body(leaveRequestService.submit(userId, request));
     }
 
+    @GetMapping("/my")
+    public ResponseEntity<PageResponse<LeaveRequestResponse>> getMyLeaveRequests(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(leaveRequestService.getMyLeaveRequests(principal.userId(), pageable));
+    }
+
     @GetMapping
     public ResponseEntity<PageResponse<LeaveRequestResponse>> getLeaveRequests(
             @AuthenticationPrincipal AuthenticatedUser principal,

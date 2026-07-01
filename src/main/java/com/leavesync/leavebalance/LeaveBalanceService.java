@@ -36,32 +36,32 @@ public class LeaveBalanceService {
     private final TeamRepository teamRepository;
 
     @Transactional
-    public LeaveBalance createLeaveBalanceForYear(User user, int year) {
+    public void createLeaveBalanceForYear(User user, int year) {
 
-        return leaveBalanceRepository.findByUserIdAndYear(user.getId(), year)
-                .orElseGet(() -> {
+        Optional<LeaveBalance> existingLeaveBalance = leaveBalanceRepository.findByUserIdAndYear(user.getId(), year);
 
-                    LeaveBalance previous = leaveBalanceRepository.findByUserIdAndYear(user.getId(), year - 1)
-                            .orElseThrow(() -> new ResourceNotFoundException(
-                                    "LeaveBalance", "userId/year", user.getId().toString() + "/" + (year - 1)));
+        if (existingLeaveBalance.isEmpty()) {
+            LeaveBalance previous = leaveBalanceRepository.findByUserIdAndYear(user.getId(), year - 1)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "LeaveBalance", "userId/year", user.getId().toString() + "/" + (year - 1)));
 
-                    BigDecimal remaining = previous.getTotalEntitlement()
-                            .add(previous.getCarriedOver())
-                            .subtract(previous.getLeaveUsed())
-                            .subtract(previous.getPendingDays());
+            BigDecimal remaining = previous.getTotalEntitlement()
+                    .add(previous.getCarriedOver())
+                    .subtract(previous.getLeaveUsed())
+                    .subtract(previous.getPendingDays());
 
-                    BigDecimal carryOver = remaining.max(BigDecimal.ZERO).min(new BigDecimal("5"));
+            BigDecimal carryOver = remaining.max(BigDecimal.ZERO).min(new BigDecimal("5"));
 
-                    LeaveBalance newLeaveBalance = new LeaveBalance();
-                    newLeaveBalance.setUserId(user.getId());
-                    newLeaveBalance.setYear(year);
-                    newLeaveBalance.setTotalEntitlement(new BigDecimal("25"));
-                    newLeaveBalance.setCarriedOver(carryOver);
-                    newLeaveBalance.setLeaveUsed(BigDecimal.ZERO);
-                    newLeaveBalance.setPendingDays(BigDecimal.ZERO);
+            LeaveBalance newLeaveBalance = new LeaveBalance();
+            newLeaveBalance.setUserId(user.getId());
+            newLeaveBalance.setYear(year);
+            newLeaveBalance.setTotalEntitlement(new BigDecimal("25"));
+            newLeaveBalance.setCarriedOver(carryOver);
+            newLeaveBalance.setLeaveUsed(BigDecimal.ZERO);
+            newLeaveBalance.setPendingDays(BigDecimal.ZERO);
 
-                    return leaveBalanceRepository.save(newLeaveBalance);
-                });
+            leaveBalanceRepository.save(newLeaveBalance);
+        }
     }
 
     public LeaveBalanceResponse getMyLeaveBalance(AuthenticatedUser principal, int year) {
