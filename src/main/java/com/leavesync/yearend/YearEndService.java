@@ -12,10 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -54,29 +51,40 @@ public class YearEndService {
         int currentYear = LocalDate.now().getYear();
         List<User> activeUsers = userRepository.findByIsActiveTrue();
         List<YearEndWarningEntry> entries = new ArrayList<>();
+        List<UUID> failedUserIds = new ArrayList<>();
 
         for (User user : activeUsers) {
-            Optional<BigDecimal> remainingOpt = leaveBalanceService.getRemainingLeaveBalance(user.getId(), currentYear);
+            try {
+                Optional<BigDecimal> remainingOpt = leaveBalanceService.getRemainingLeaveBalance(user.getId(), currentYear);
 
-            if (remainingOpt.isEmpty()) {
-                continue;
-            }
+                if (remainingOpt.isEmpty()) {
+                    continue;
+                }
 
-            BigDecimal remainingBalance = remainingOpt.get();
-            if (remainingBalance.compareTo(new BigDecimal("5")) > 0) {
-                BigDecimal daysAtRisk = remainingBalance.subtract(new BigDecimal("5"));
-                entries.add(new YearEndWarningEntry(
-                        user.getFirstName() + " " + user.getLastName(),
-                        remainingBalance,
-                        daysAtRisk
-                ));
-                emailService.sendYearEndWarningEmail(
-                        user.getEmail(),
-                        user.getFirstName(),
-                        remainingBalance,
-                        daysAtRisk
-                );
+                BigDecimal remainingBalance = remainingOpt.get();
+                if (remainingBalance.compareTo(new BigDecimal("5")) > 0) {
+                    BigDecimal daysAtRisk = remainingBalance.subtract(new BigDecimal("5"));
+                    entries.add(new YearEndWarningEntry(
+                            user.getFirstName() + " " + user.getLastName(),
+                            remainingBalance,
+                            daysAtRisk
+                    ));
+                    emailService.sendYearEndWarningEmail(
+                            user.getEmail(),
+                            user.getFirstName(),
+                            remainingBalance,
+                            daysAtRisk
+                    );
+                }
             }
+            catch (Exception e) {
+                failedUserIds.add(user.getId());
+                log.error("Year-end warnings: failed for userId = {} year = {} : {}", user.getId(), currentYear, e.getMessage());
+            }
+        }
+
+        if (!failedUserIds.isEmpty()) {
+            log.error("Year-end warnings: emails failed for {} users: {}", failedUserIds.size(), failedUserIds);
         }
 
         if (entries.isEmpty()) {
@@ -124,13 +132,25 @@ public class YearEndService {
         recipients.addAll(userRepository.findAllByRoleAndIsActiveTrue(Role.HR));
         recipients.addAll(userRepository.findAllByRoleAndIsActiveTrue(Role.ADMIN));
 
+        List<UUID> failedUserIds = new ArrayList<>();
+
         for (User recipient : recipients) {
-            emailService.sendMissingPublicHolidaysEmail(
-                    recipient.getEmail(),
-                    recipient.getFirstName(),
-                    newYear,
-                    missingRegions
-            );
+            try {
+                emailService.sendMissingPublicHolidaysEmail(
+                        recipient.getEmail(),
+                        recipient.getFirstName(),
+                        newYear,
+                        missingRegions
+                );
+            }
+            catch (Exception e) {
+                failedUserIds.add(recipient.getId());
+                log.error("Public holidays check: email failed for userId = {} : {}", recipient.getId(), e.getMessage());
+            }
+        }
+
+        if (!failedUserIds.isEmpty()) {
+            log.error("Public holidays check: emails failed for {} recipients: {}", failedUserIds.size(), failedUserIds);
         }
 
         log.info("Public holidays check: missing holidays data for {} in regions {}", newYear, missingRegions);
