@@ -48,6 +48,12 @@ public class SecurityConfig {
                                 "/api/users/forgot-password",
                                 "/api/users/reset-password"
                         ).permitAll()
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
