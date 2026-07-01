@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -42,7 +42,7 @@ class WorkingDayServiceTest {
 
         BigDecimal result = workingDayService.countWorkingDays(from, to);
 
-        assertEquals(BigDecimal.valueOf(5), result);
+        assertThat(result).isEqualByComparingTo(new BigDecimal("5"));
     }
 
     @Test
@@ -55,7 +55,7 @@ class WorkingDayServiceTest {
 
         BigDecimal result = workingDayService.countWorkingDays(from, to);
 
-        assertEquals(BigDecimal.valueOf(5), result);
+        assertThat(result).isEqualByComparingTo(new BigDecimal("5"));
     }
 
     @Test
@@ -68,7 +68,7 @@ class WorkingDayServiceTest {
 
         BigDecimal result = workingDayService.countWorkingDays(from, to);
 
-        assertEquals(BigDecimal.valueOf(4), result);
+        assertThat(result).isEqualByComparingTo(new BigDecimal("4"));
     }
 
     @Test
@@ -80,7 +80,7 @@ class WorkingDayServiceTest {
 
         BigDecimal result = workingDayService.countWorkingDays(date, date);
 
-        assertEquals(BigDecimal.valueOf(1), result);
+        assertThat(result).isEqualByComparingTo(new BigDecimal("1"));
     }
 
     @Test
@@ -93,7 +93,7 @@ class WorkingDayServiceTest {
 
         BigDecimal result = workingDayService.countWorkingDays(from, to);
 
-        assertEquals(BigDecimal.valueOf(0), result);
+        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
@@ -106,7 +106,7 @@ class WorkingDayServiceTest {
 
         BigDecimal result = workingDayService.countWorkingDays(from, to);
 
-        assertEquals(BigDecimal.valueOf(3), result);
+        assertThat(result).isEqualByComparingTo(new BigDecimal("3"));
     }
 
     @Test
@@ -118,7 +118,7 @@ class WorkingDayServiceTest {
 
         LocalDate result = workingDayService.normaliseToWorkingDay(date);
 
-        assertEquals(date, result);
+        assertThat(result).isEqualTo(date);
     }
 
     @Test
@@ -130,7 +130,7 @@ class WorkingDayServiceTest {
 
         LocalDate result = workingDayService.normaliseToWorkingDay(date);
 
-        assertEquals(LocalDate.of(2026, 6, 29), result);
+        assertThat(result).isEqualTo(LocalDate.of(2026, 6, 29));
     }
 
     @Test
@@ -142,7 +142,7 @@ class WorkingDayServiceTest {
 
         LocalDate result = workingDayService.normaliseToWorkingDay(date);
 
-        assertEquals(LocalDate.of(2026, 6, 29), result);
+        assertThat(result).isEqualTo(LocalDate.of(2026, 6, 29));
     }
 
     @Test
@@ -154,7 +154,7 @@ class WorkingDayServiceTest {
 
         LocalDate result = workingDayService.normaliseToWorkingDay(monday);
 
-        assertEquals(LocalDate.of(2026, 6, 30), result);
+        assertThat(result).isEqualTo(LocalDate.of(2026, 6, 30));
     }
 
     /**
@@ -170,7 +170,7 @@ class WorkingDayServiceTest {
 
         LocalDate result = workingDayService.subtractWorkingDays(date, 5);
 
-        assertEquals(LocalDate.of(2026, 6, 19), result);
+        assertThat(result).isEqualTo(LocalDate.of(2026, 6, 19));
     }
 
     /**
@@ -186,7 +186,7 @@ class WorkingDayServiceTest {
 
         LocalDate result = workingDayService.subtractWorkingDays(date, 5);
 
-        assertEquals(LocalDate.of(2026, 6, 17), result);
+        assertThat(result).isEqualTo(LocalDate.of(2026, 6, 17));
     }
 
     /**
@@ -202,7 +202,7 @@ class WorkingDayServiceTest {
 
         LocalDate result = workingDayService.addWorkingDays(date, 5);
 
-        assertEquals(LocalDate.of(2026, 6, 29), result);
+        assertThat(result).isEqualTo(LocalDate.of(2026, 6, 29));
     }
 
     /**
@@ -218,7 +218,7 @@ class WorkingDayServiceTest {
 
         LocalDate result = workingDayService.addWorkingDays(date, 5);
 
-        assertEquals(LocalDate.of(2026, 6, 30), result);
+        assertThat(result).isEqualTo(LocalDate.of(2026, 6, 30));
     }
 
 }

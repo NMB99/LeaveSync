@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -70,7 +70,6 @@ public class UserServiceTest {
 
     UUID userId;
     User user;
-    LeaveBalance leaveBalance;
     UUID teamId;
     Team team;
     AuthenticatedUser principal;
@@ -313,7 +312,7 @@ public class UserServiceTest {
         verify(userRepository).findAll(any(Pageable.class));
 
         assertThat(response).isNotNull();
-        assertThat(response.content().size()).isEqualTo(1);
+        assertThat(response.content()).hasSize(1);
     }
 
     @Test
@@ -335,7 +334,7 @@ public class UserServiceTest {
         verify(userRepository).findByTeamIdIn(anyList(), any(Pageable.class));
 
         assertThat(response).isNotNull();
-        assertThat(response.content().size()).isEqualTo(1);
+        assertThat(response.content()).hasSize(1);
     }
 
     @Test
