@@ -3,6 +3,9 @@ package com.leavesync.report;
 import com.leavesync.common.PageResponse;
 import com.leavesync.leavebalance.LeaveBalanceResponse;
 import com.leavesync.security.AuthenticatedUser;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +24,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Tag(name = "Reports", description = "On-demand leave reports with CSV export - who's off, balance summary, leave history and absence patterns")
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
@@ -28,8 +32,13 @@ public class ReportController {
 
     private final ReportService reportService;
 
+    @Operation(summary = "Get who's off", description = "Returns a paginated list of employees on leave for a specified date. Includes PENDING and APPROVED requests. MANAGER sees their team only. HR and ADMIN see company-wide. Requires a date query parameter in ISO format (yyyy-MM-dd). Accessible by: ADMIN, HR, MANAGER")
+    @ApiResponse(responseCode = "200", description = "Who's off returned successfully")
+    @ApiResponse(responseCode = "400", description = "Missing or invalid date parameter")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+    @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN, HR or MANAGER role required")
     @GetMapping("/whos-off")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'HR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
     public ResponseEntity<PageResponse<WhosOffResponse>> getWhosOff(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
@@ -41,6 +50,11 @@ public class ReportController {
                 .body(reportService.getWhosOff(principal, date, pageable));
     }
 
+    @Operation(summary = "Get balance summary", description = "Returns a paginated company-wide leave balance summary for the specified year. Requires a year query parameter. Accessible by: ADMIN, HR")
+    @ApiResponse(responseCode = "200", description = "Balance summary returned successfully")
+    @ApiResponse(responseCode = "400", description = "Missing or invalid year parameter")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+    @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN or HR role required")
     @GetMapping("/balance-summary")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<PageResponse<LeaveBalanceResponse>> getBalanceSummary(
@@ -54,6 +68,10 @@ public class ReportController {
                 .body(reportService.getBalanceSummary(principal, year, pageable));
     }
 
+    @Operation(summary = "Get leave history", description = "Returns a paginated full audit trail of leave requests including status changes, actioned by, and timestamps. Optionally filter by userId, startDate and endDate. All parameters are optional. Accessible by: ADMIN, HR")
+    @ApiResponse(responseCode = "200", description = "Leave history returned successfully")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+    @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN or HR role required")
     @GetMapping("/leave-history")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<PageResponse<LeaveHistoryResponse>> getLeaveHistory(
@@ -69,6 +87,10 @@ public class ReportController {
                 .body(reportService.getLeaveHistory(principal, userId, startDate, endDate, pageable));
     }
 
+    @Operation(summary = "Get absence patterns", description = "Returns a paginated sick leave absence pattern report - frequency of sick leave instances per employee. Counts APPROVED and REJECTED sick leave only. Optionally filter by date range. Accessible by: ADMIN, HR")
+    @ApiResponse(responseCode = "200", description = "Absence patterns returned successfully")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+    @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN or HR role required")
     @GetMapping("/absence-patterns")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<PageResponse<AbsencePatternResponse>> getAbsencePatterns(
@@ -83,8 +105,13 @@ public class ReportController {
                 .body(reportService.getAbsencePatterns(principal, startDate, endDate, pageable));
     }
 
+    @Operation(summary = "Export who's off", description = "Exports who's off report as a CSV file. Same filters and access rules as the JSON endpoint. Returns file attachment with Content-Disposition header. Accessible by: ADMIN, HR, MANAGER")
+    @ApiResponse(responseCode = "200", description = "Who's off CSV report exported successfully")
+    @ApiResponse(responseCode = "400", description = "Missing or invalid date parameter")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+    @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN, HR or MANAGER role required")
     @GetMapping("/whos-off/export-csv")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'HR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
     public ResponseEntity<String> exportWhosOffAsCsv(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
@@ -96,6 +123,11 @@ public class ReportController {
                 .body(csv);
     }
 
+    @Operation(summary = "Export balance summary", description = "Exports balance summary report as a CSV file. Same filters and access rules as the JSON endpoint. Returns file attachment with Content-Disposition header. Accessible by: ADMIN, HR")
+    @ApiResponse(responseCode = "200", description = "Balance summary CSV report exported successfully")
+    @ApiResponse(responseCode = "400", description = "Missing or invalid year parameter")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+    @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN or HR role required")
     @GetMapping("/balance-summary/export-csv")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<String> exportBalanceSummaryAsCsv(
@@ -109,6 +141,10 @@ public class ReportController {
                 .body(csv);
     }
 
+    @Operation(summary = "Export leave history", description = "Exports leave history report as a CSV file. Same filters and access rules as the JSON endpoint. Returns file attachment with Content-Disposition header. Accessible by: ADMIN, HR")
+    @ApiResponse(responseCode = "200", description = "Leave history CSV report exported successfully")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+    @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN or HR role required")
     @GetMapping("/leave-history/export-csv")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<String> exportLeaveHistoryAsCsv(
@@ -124,6 +160,10 @@ public class ReportController {
                 .body(csv);
     }
 
+    @Operation(summary = "Export absence pattern", description = "Exports absence pattern report as a CSV file. Same filters and access rules as the JSON endpoint. Returns file attachment with Content-Disposition header. Accessible by: ADMIN, HR")
+    @ApiResponse(responseCode = "200", description = "Absence pattern CSV report exported successfully")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+    @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN or HR role required")
     @GetMapping("/absence-patterns/export-csv")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
     public ResponseEntity<String> exportAbsencePatternsAsCsv(
