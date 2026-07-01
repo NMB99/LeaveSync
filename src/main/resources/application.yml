@@ -53,3 +53,10 @@ leavesync:
 
 server:
   port: 8080
+
+springdoc:
+  swagger-ui:
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
