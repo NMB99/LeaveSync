@@ -21,10 +21,10 @@ public class OpenApiConfig {
     public OpenAPI openAPI(@Value("${leavesync.deployed-url}") String deployedUrl) {
 
         List<Server> serverList = new ArrayList<>();
-        if (!deployedUrl.isEmpty()) {
-            serverList.add(new Server().url(deployedUrl).description("Deployed (Render)"));
-        }
-        serverList.add(new Server().url("http://localhost:8080").description("Local development"));
+        serverList.add(!deployedUrl.isEmpty()
+            ? new Server().url(deployedUrl).description("Deployed (Render)")
+            : new Server().url("http://localhost:8080").description("Local development")
+        );
 
         return new OpenAPI()
                 .info(new Info()
