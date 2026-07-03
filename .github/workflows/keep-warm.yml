@@ -1,0 +1,13 @@
+name: Keep backend warmed up
+
+on:
+  schedule:
+    - cron: "*/12 7-17 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping LeaveSync
+        run: curl -f https://leavesync-api-60lv.onrender.com/actuator/health

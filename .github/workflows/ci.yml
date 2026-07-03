@@ -23,3 +23,11 @@ jobs:
 
       - name: Run tests
         run: mvn test
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
