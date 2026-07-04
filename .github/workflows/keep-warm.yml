@@ -2,7 +2,7 @@ name: Keep backend warmed up
 
 on:
   schedule:
-    - cron: "*/12 7-17 * * *"
+    - cron: "*/15 7-17 * * *"
   workflow_dispatch:
 
 jobs:
