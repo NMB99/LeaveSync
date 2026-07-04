@@ -1,12 +1,13 @@
 package com.leavesync.common;
 
+import com.leavesync.report.AbsencePatternResponse;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
 
-public record PageResponse<T>(
+public record AbsencePatternPageResponse(
 
-        List<T> content,
+        List<AbsencePatternResponse> content,
         int page,
         int size,
         long totalElements,
@@ -15,8 +16,8 @@ public record PageResponse<T>(
         boolean last
 
 ) {
-    public static <T> PageResponse<T> from(Page<T> page) {
-        return new PageResponse<>(
+    public static AbsencePatternPageResponse from(Page<AbsencePatternResponse> page) {
+        return new AbsencePatternPageResponse(
                 page.getContent(),
                 page.getNumber(),
                 page.getSize(),

@@ -1,6 +1,6 @@
 package com.leavesync.user;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.UserPageResponse;
 import com.leavesync.email.EmailService;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
@@ -308,7 +308,7 @@ public class UserServiceTest {
         Page<User> page = new PageImpl<>(List.of(user));
         when(userRepository.findAll(any(Pageable.class))).thenReturn(page);
 
-        PageResponse<UserResponse> response = userService.getAllUsers(principal, Pageable.unpaged());
+        UserPageResponse response = userService.getAllUsers(principal, Pageable.unpaged());
         verify(userRepository).findAll(any(Pageable.class));
 
         assertThat(response).isNotNull();
@@ -329,7 +329,7 @@ public class UserServiceTest {
         Page<User> page = new PageImpl<>(List.of(user));
         when(userRepository.findByTeamIdIn(anyList(), any(Pageable.class))).thenReturn(page);
 
-        PageResponse<UserResponse> response = userService.getAllUsers(principal, Pageable.unpaged());
+        UserPageResponse response = userService.getAllUsers(principal, Pageable.unpaged());
         verify(teamRepository).findByManagerId(managerId);
         verify(userRepository).findByTeamIdIn(anyList(), any(Pageable.class));
 

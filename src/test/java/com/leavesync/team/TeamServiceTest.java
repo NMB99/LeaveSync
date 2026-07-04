@@ -1,6 +1,6 @@
 package com.leavesync.team;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.TeamPageResponse;
 import com.leavesync.entity.Team;
 import com.leavesync.entity.User;
 import com.leavesync.enums.Role;
@@ -138,7 +138,7 @@ public class TeamServiceTest {
         Page<Team> page = new PageImpl<>(List.of(team));
         when(teamRepository.findAll(any(Pageable.class))).thenReturn(page);
 
-        PageResponse<TeamResponse> response = teamService.getAllTeams(principal, Pageable.unpaged());
+        TeamPageResponse response = teamService.getAllTeams(principal, Pageable.unpaged());
         verify(teamRepository).findAll(any(Pageable.class));
 
         assertThat(response).isNotNull();
@@ -152,7 +152,7 @@ public class TeamServiceTest {
         Page<Team> page = new PageImpl<>(List.of(team));
         when(teamRepository.findByManagerId(managerId, Pageable.unpaged())).thenReturn(page);
 
-        PageResponse<TeamResponse> response = teamService.getAllTeams(principal, Pageable.unpaged());
+        TeamPageResponse response = teamService.getAllTeams(principal, Pageable.unpaged());
         verify(teamRepository).findByManagerId(managerId, Pageable.unpaged());
 
         assertThat(response).isNotNull();

@@ -1,6 +1,9 @@
 package com.leavesync.report;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.AbsencePatternPageResponse;
+import com.leavesync.common.LeaveBalancePageResponse;
+import com.leavesync.common.LeaveHistoryPageResponse;
+import com.leavesync.common.WhosOffPageResponse;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
 import com.leavesync.exception.ForbiddenException;
@@ -69,7 +72,7 @@ public class ReportService {
                 .toList();
     }
 
-    public PageResponse<WhosOffResponse> getWhosOff(AuthenticatedUser principal, LocalDate date, Pageable pageable) {
+    public WhosOffPageResponse getWhosOff(AuthenticatedUser principal, LocalDate date, Pageable pageable) {
 
         List<LeaveStatus> statuses = List.of(LeaveStatus.PENDING, LeaveStatus.APPROVED);
 
@@ -100,7 +103,7 @@ public class ReportService {
                         .toList()
         ).stream().collect(Collectors.toMap(LeaveType::getId, Function.identity()));
 
-        return PageResponse.from(
+        return WhosOffPageResponse.from(
                 requests.map(r -> WhosOffResponse.from(r, userMap.get(r.getUserId()), leaveTypeMap.get(r.getLeaveTypeId())))
         );
     }
@@ -124,7 +127,7 @@ public class ReportService {
                 .toList();
     }
 
-    public PageResponse<LeaveBalanceResponse> getBalanceSummary(AuthenticatedUser principal, int year, Pageable pageable) {
+    public LeaveBalancePageResponse getBalanceSummary(AuthenticatedUser principal, int year, Pageable pageable) {
 
         Page<LeaveBalance> balances = switch (principal.role()) {
             case EMPLOYEE, MANAGER -> throw new ForbiddenException("You are not authorized to view/access this resource");
@@ -137,7 +140,7 @@ public class ReportService {
                         .toList()
         ).stream().collect(Collectors.toMap(User::getId, Function.identity()));
 
-        return PageResponse.from(
+        return LeaveBalancePageResponse.from(
                 balances.map(b -> LeaveBalanceResponse.from(b, userMap.get(b.getUserId())))
         );
     }
@@ -199,7 +202,7 @@ public class ReportService {
                 .toList();
     }
 
-    public PageResponse<LeaveHistoryResponse> getLeaveHistory(
+    public LeaveHistoryPageResponse getLeaveHistory(
             AuthenticatedUser principal, UUID userId, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
 
         Page<LeaveRequest> requests = switch (principal.role()) {
@@ -214,7 +217,7 @@ public class ReportService {
                 .toList();
 
         if (requestIds.isEmpty())
-            return new PageResponse<>(List.of(), requests.getNumber(), requests.getSize(), 0L, 0, true, true);
+            return new LeaveHistoryPageResponse(List.of(), requests.getNumber(), requests.getSize(), 0L, 0, true, true);
 
         List<AuditLog> logs = auditLogRepository.findByLeaveRequestIdInAndDateRange(
                 requestIds, startDate, endDate
@@ -244,7 +247,7 @@ public class ReportService {
         Map<UUID, User> actionedByMap = userRepository.findAllById(actionedByIds)
                 .stream().collect(Collectors.toMap(User::getId, Function.identity()));
 
-        return PageResponse.from(
+        return LeaveHistoryPageResponse.from(
                 requests
                 .map(request -> {
                     User employee = employeeMap.get(request.getUserId());
@@ -286,7 +289,7 @@ public class ReportService {
                 .toList();
     }
 
-    public PageResponse<AbsencePatternResponse> getAbsencePatterns(
+    public AbsencePatternPageResponse getAbsencePatterns(
             AuthenticatedUser principal, LocalDate startDate, LocalDate endDate, Pageable pageable) {
 
         LeaveType sickLeaveType = leaveTypeRepository.findByCode("SICK")
@@ -304,7 +307,7 @@ public class ReportService {
         List<UUID> userIds = userIdPage.getContent();
 
         if (userIdPage.isEmpty())
-            return new PageResponse<>(List.of(), userIdPage.getNumber(), userIdPage.getSize(), 0L, 0, true, true);
+            return new AbsencePatternPageResponse(List.of(), userIdPage.getNumber(), userIdPage.getSize(), 0L, 0, true, true);
 
         List<LeaveRequest> sickRequests = leaveRequestRepository.findByLeaveTypeIdAndStatusInAndDateRangeAndUserIdIn(
                 sickLeaveType.getId(), statuses, startDate, endDate, userIds
@@ -323,7 +326,7 @@ public class ReportService {
                 ))
                 .toList();
 
-        return new PageResponse<>(
+        return new AbsencePatternPageResponse(
                 content,
                 userIdPage.getNumber(),
                 userIdPage.getSize(),

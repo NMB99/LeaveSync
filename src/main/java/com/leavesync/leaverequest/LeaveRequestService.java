@@ -1,6 +1,6 @@
 package com.leavesync.leaverequest;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.LeaveRequestPageResponse;
 import com.leavesync.email.EmailService;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
@@ -183,7 +183,7 @@ public class LeaveRequestService {
         return LeaveRequestResponse.from(leaveRequest, submitter, leaveType, balanceWarning);
     }
 
-    public PageResponse<LeaveRequestResponse> getMyLeaveRequests(UUID userId, Pageable pageable) {
+    public LeaveRequestPageResponse getMyLeaveRequests(UUID userId, Pageable pageable) {
         Page<LeaveRequest> requests = leaveRequestRepository.findByUserId(userId, pageable);
 
         Map<UUID, User> userMap = userRepository
@@ -196,14 +196,14 @@ public class LeaveRequestService {
                 .stream()
                 .collect(Collectors.toMap(LeaveType::getId, Function.identity()));
 
-        return PageResponse.from(requests.map(leaveRequest -> {
+        return LeaveRequestPageResponse.from(requests.map(leaveRequest -> {
             User requestOwner = userMap.get(leaveRequest.getUserId());
             LeaveType leaveType = leaveTypeMap.get(leaveRequest.getLeaveTypeId());
             return LeaveRequestResponse.from(leaveRequest, requestOwner, leaveType);
         }));
     }
 
-    public PageResponse<LeaveRequestResponse> getLeaveRequests(AuthenticatedUser principal, Pageable pageable) {
+    public LeaveRequestPageResponse getLeaveRequests(AuthenticatedUser principal, Pageable pageable) {
 
         Page<LeaveRequest> requests = switch (principal.role()) {
             case EMPLOYEE -> leaveRequestRepository.findByUserId(principal.userId(), pageable);
@@ -242,7 +242,7 @@ public class LeaveRequestService {
                 .stream()
                 .collect(Collectors.toMap(LeaveType::getId, Function.identity()));
 
-        return PageResponse.from(requests.map(leaveRequest -> {
+        return LeaveRequestPageResponse.from(requests.map(leaveRequest -> {
             User requestOwner = userMap.get(leaveRequest.getUserId());
             LeaveType leaveType = leaveTypeMap.get(leaveRequest.getLeaveTypeId());
             return LeaveRequestResponse.from(leaveRequest, requestOwner, leaveType);
