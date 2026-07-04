@@ -1,6 +1,6 @@
 package com.leavesync.user;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.UserPageResponse;
 import com.leavesync.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -77,7 +77,7 @@ public class UserController {
     @ApiResponse(responseCode = "401", description = "Missing or invalid token")
     @ApiResponse(responseCode = "403", description = "Insufficient permissions — EMPLOYEE access is forbidden")
     @GetMapping
-    public ResponseEntity<PageResponse<UserResponse>> getAllUsers(
+    public ResponseEntity<UserPageResponse> getAllUsers(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size

@@ -1,6 +1,6 @@
 package com.leavesync.user;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.UserPageResponse;
 import com.leavesync.email.EmailService;
 import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
@@ -141,7 +141,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public PageResponse<UserResponse> getAllUsers(AuthenticatedUser principal, Pageable pageable) {
+    public UserPageResponse getAllUsers(AuthenticatedUser principal, Pageable pageable) {
 
         Page<User> users = switch (principal.role()) {
             case ADMIN, HR -> userRepository.findAll(pageable);
@@ -156,7 +156,7 @@ public class UserService {
             default -> throw new ForbiddenException("You are not authorized to view this resource");
         };
 
-        return PageResponse.from(users.map(UserResponse::from));
+        return UserPageResponse.from(users.map(UserResponse::from));
     }
 
     public UserResponse getUserById(UUID userId, AuthenticatedUser principal) {

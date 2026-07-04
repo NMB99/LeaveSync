@@ -1,7 +1,9 @@
 package com.leavesync.report;
 
-import com.leavesync.common.PageResponse;
-import com.leavesync.leavebalance.LeaveBalanceResponse;
+import com.leavesync.common.AbsencePatternPageResponse;
+import com.leavesync.common.LeaveBalancePageResponse;
+import com.leavesync.common.LeaveHistoryPageResponse;
+import com.leavesync.common.WhosOffPageResponse;
 import com.leavesync.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,7 +41,7 @@ public class ReportController {
     @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN, HR or MANAGER role required")
     @GetMapping("/whos-off")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER')")
-    public ResponseEntity<PageResponse<WhosOffResponse>> getWhosOff(
+    public ResponseEntity<WhosOffPageResponse> getWhosOff(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "0") int page,
@@ -57,7 +59,7 @@ public class ReportController {
     @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN or HR role required")
     @GetMapping("/balance-summary")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
-    public ResponseEntity<PageResponse<LeaveBalanceResponse>> getBalanceSummary(
+    public ResponseEntity<LeaveBalancePageResponse> getBalanceSummary(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam int year,
             @RequestParam(defaultValue = "0") int page,
@@ -74,7 +76,7 @@ public class ReportController {
     @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN or HR role required")
     @GetMapping("/leave-history")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
-    public ResponseEntity<PageResponse<LeaveHistoryResponse>> getLeaveHistory(
+    public ResponseEntity<LeaveHistoryPageResponse> getLeaveHistory(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
@@ -93,7 +95,7 @@ public class ReportController {
     @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN or HR role required")
     @GetMapping("/absence-patterns")
     @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
-    public ResponseEntity<PageResponse<AbsencePatternResponse>> getAbsencePatterns(
+    public ResponseEntity<AbsencePatternPageResponse> getAbsencePatterns(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
