@@ -7,7 +7,7 @@ A backend REST API for employee leave management, built with Spring Boot. Multi-
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=flat-square)
 ![Redis](https://img.shields.io/badge/Redis-7-red?style=flat-square)
 ![JWT](https://img.shields.io/badge/Auth-JWT-yellow?style=flat-square)
-![Tests](https://img.shields.io/badge/Tests-143%20passing-success?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-147%20passing-success?style=flat-square)
 ![CI](https://github.com/NMB99/LeaveSync/actions/workflows/ci.yml/badge.svg)
 
 This is my second portfolio project, built as a deliberate step up from [TeamSync](https://github.com/NMB99/TeamSync). TeamSync was a single-approval-level standup tracker. LeaveSync adds multi-role approval chains, caching, scheduled jobs, audit compliance, and pagination - areas TeamSync didn't need to cover.
@@ -22,7 +22,7 @@ Harlow Digital is a remote-first UK company with about 200 employees. Right now 
 
 ## Live Demo
 
-**Local:** run the app (steps below), then visit `http://localhost:8080/swagger-ui.html`
+**Live:** [Swagger UI](https://leavesync-api-60lv.onrender.com/swagger-ui.html)
 
 **Visitor credentials (HR role):**
 - Email: `visitor@leavesync.com`
@@ -30,7 +30,9 @@ Harlow Digital is a remote-first UK company with about 200 employees. Right now 
 
 Login via `POST /api/auth/login`, click **Authorize**, paste the token.
 
-> Railway deployment is the next phase - this section will be updated with the live URL once that's done.
+> Free-tier hosting spins down after 15 minutes of inactivity. First request can take 30-45 seconds to wake up - subsequent requests are fast.
+
+Prefer to run it locally instead? See **Getting Started** below.
 
 ---
 
@@ -42,19 +44,20 @@ An employee submits an annual leave request. LeaveSync calculates the working da
 
 ## Tech Stack
 
-| Layer         | Technology                                             |
-|---------------|--------------------------------------------------------|
-| Language      | Java 21                                                |
-| Framework     | Spring Boot 3.5.14                                     |
-| Security      | Spring Security, JWT (JJWT 0.12.6)                     |
-| Persistence   | Spring Data JPA, Hibernate                             |
-| Database      | PostgreSQL 16                                          |
-| Caching       | Redis 7                                                |
-| Migrations    | Flyway                                                 |
-| Email         | JavaMailSender (Mailpit locally, Resend in production) |
-| Testing       | JUnit 5, Mockito                                       |
-| Documentation | Swagger UI (springdoc-openapi 2.8.9)                   |
-| Build Tool    | Maven                                                  |
+| Layer         | Technology                                                        |
+|---------------|-------------------------------------------------------------------|
+| Language      | Java 21                                                           |
+| Framework     | Spring Boot 3.5.14                                                |
+| Security      | Spring Security, JWT (JJWT 0.12.6)                                |
+| Persistence   | Spring Data JPA, Hibernate                                        |
+| Database      | PostgreSQL 16                                                     |
+| Caching       | Redis 7                                                           |
+| Migrations    | Flyway                                                            |
+| Email         | JavaMailSender (Mailpit locally, Resend in production)            |
+| Testing       | JUnit 5, Mockito                                                  |
+| Documentation | Swagger UI (springdoc-openapi 2.8.9)                              |
+| Build Tool    | Maven                                                             |
+| Deployment    | Render (Docker), Neon (Postgres), Upstash (Redis), Resend (email) |
 
 ---
 
@@ -72,16 +75,17 @@ An employee submits an annual leave request. LeaveSync calculates the working da
 - **Redis caching** - leave types and public holiday lookups
 - **Scheduled year-end job** - automatic rollover, carry-over, and expiry warnings
 - **Swagger UI** - interactive docs with a pre-seeded visitor login
-- **143 unit tests** - service layer, Mockito + JUnit 5, CI-enforced on every push
+- **CI/CD** - GitHub Actions runs the test suite on every push; merges to `main` trigger an automatic deploy to Render via webhook
+- **147 unit tests** - service layer, Mockito + JUnit 5, CI-enforced on every push
 
 ---
 
 ## Architecture
 
 ````
-┌───────────────────────────────────────────┐
-│              REST Controllers             │
-└─────────────────────┬─────────────────────┘
+┌────────────────────────────────────────────┐
+│              REST Controllers              │
+└─────────────────────┬──────────────────────┘
                       │
 ┌─────────────────────▼──────────────────────┐
 │               Service Layer                │
@@ -264,7 +268,7 @@ The app defaults to the `local` Spring profile, which points at the local contai
 ./mvnw test
 ```
 
-143 unit tests covering the service layer - happy paths, role-based access rules, and edge cases, using JUnit 5 and Mockito. Runs automatically on every push and pull request via GitHub Actions.
+147 unit tests covering the service layer - happy paths, role-based access rules, and edge cases, using JUnit 5 and Mockito. Runs automatically on every push and pull request via GitHub Actions.
 
 ---
 
@@ -296,9 +300,8 @@ src/main/java/com/leavesync/
 
 ## Roadmap
 
-- [ ] Railway deployment (Postgres, Redis, Resend)
 - [ ] Testcontainers-based integration tests (`LeaveSyncApplicationTests` currently disabled)
-- [ ] Post-deployment refactoring pass
+- Code quality backlog (DRY passes, method extraction) - deliberately not scheduled for now
 
 ---
 
