@@ -1,6 +1,6 @@
 package com.leavesync.team;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.TeamPageResponse;
 import com.leavesync.entity.Team;
 import com.leavesync.entity.User;
 import com.leavesync.enums.Role;
@@ -54,7 +54,7 @@ public class TeamService {
         return TeamResponse.from(savedTeam);
     }
 
-    public PageResponse<TeamResponse> getAllTeams(AuthenticatedUser principal, Pageable pageable) {
+    public TeamPageResponse getAllTeams(AuthenticatedUser principal, Pageable pageable) {
 
         Page<Team> teams = switch (principal.role()) {
             case MANAGER -> teamRepository.findByManagerId(principal.userId(), pageable);
@@ -62,7 +62,7 @@ public class TeamService {
             case EMPLOYEE -> throw new ForbiddenException("You are not authorized to view this resource");
         };
 
-        return PageResponse.from(teams.map(TeamResponse::from));
+        return TeamPageResponse.from(teams.map(TeamResponse::from));
     }
 
     public TeamResponse getTeamById(UUID teamId, AuthenticatedUser principal) {

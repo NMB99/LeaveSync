@@ -1,6 +1,6 @@
 package com.leavesync.leavebalance;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.LeaveBalancePageResponse;
 import com.leavesync.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -63,7 +63,7 @@ public class LeaveBalanceController {
     @ApiResponse(responseCode = "403", description = "Unauthorised — MANAGER role required")
     @GetMapping
     @PreAuthorize( "hasRole('MANAGER') ")
-    public ResponseEntity<PageResponse<LeaveBalanceResponse>> getTeamsLeaveBalance(
+    public ResponseEntity<LeaveBalancePageResponse> getTeamsLeaveBalance(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam int year,
             @RequestParam(defaultValue = "0") int page,

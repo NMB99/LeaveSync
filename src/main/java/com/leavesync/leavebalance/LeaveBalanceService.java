@@ -1,6 +1,6 @@
 package com.leavesync.leavebalance;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.LeaveBalancePageResponse;
 import com.leavesync.entity.LeaveBalance;
 import com.leavesync.entity.Team;
 import com.leavesync.entity.User;
@@ -97,7 +97,7 @@ public class LeaveBalanceService {
         return LeaveBalanceResponse.from(balance, user);
     }
 
-    public PageResponse<LeaveBalanceResponse> getTeamsLeaveBalance(AuthenticatedUser principal, int year, Pageable pageable) {
+    public LeaveBalancePageResponse getTeamsLeaveBalance(AuthenticatedUser principal, int year, Pageable pageable) {
 
         List<UUID> teamIds = teamRepository.findByManagerId(principal.userId())
                 .stream()
@@ -111,7 +111,7 @@ public class LeaveBalanceService {
         Map<UUID, User> userMap = userRepository.findAllById(balances.map(LeaveBalance::getUserId).toList())
                 .stream().collect(Collectors.toMap(User::getId, Function.identity()));
 
-        return PageResponse.from(balances.map(balance ->
+        return LeaveBalancePageResponse.from(balances.map(balance ->
                 LeaveBalanceResponse.from(balance, userMap.get(balance.getUserId()))
         ));
     }

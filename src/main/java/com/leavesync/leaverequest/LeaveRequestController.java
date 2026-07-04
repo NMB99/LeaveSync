@@ -1,6 +1,6 @@
 package com.leavesync.leaverequest;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.LeaveRequestPageResponse;
 import com.leavesync.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -45,7 +45,7 @@ public class LeaveRequestController {
     @ApiResponse(responseCode = "200", description = "Leave requests returned successfully")
     @ApiResponse(responseCode = "401", description = "Missing or invalid token")
     @GetMapping("/my")
-    public ResponseEntity<PageResponse<LeaveRequestResponse>> getMyLeaveRequests(
+    public ResponseEntity<LeaveRequestPageResponse> getMyLeaveRequests(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size
@@ -59,7 +59,7 @@ public class LeaveRequestController {
     @ApiResponse(responseCode = "200", description = "Leave requests returned successfully")
     @ApiResponse(responseCode = "401", description = "Missing or invalid token")
     @GetMapping
-    public ResponseEntity<PageResponse<LeaveRequestResponse>> getLeaveRequests(
+    public ResponseEntity<LeaveRequestPageResponse> getLeaveRequests(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size

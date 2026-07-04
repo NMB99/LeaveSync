@@ -1,6 +1,6 @@
 package com.leavesync.team;
 
-import com.leavesync.common.PageResponse;
+import com.leavesync.common.TeamPageResponse;
 import com.leavesync.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -47,7 +47,7 @@ public class TeamController {
     @ApiResponse(responseCode = "403", description = "Insufficient permissions - ADMIN, HR or MANAGER role required")
     @GetMapping
     @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<PageResponse<TeamResponse>> getAllTeams(
+    public ResponseEntity<TeamPageResponse> getAllTeams(
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
