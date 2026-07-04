@@ -2,10 +2,7 @@ package com.leavesync.user;
 
 import com.leavesync.common.PageResponse;
 import com.leavesync.email.EmailService;
-import com.leavesync.entity.LeaveBalance;
-import com.leavesync.entity.LeaveRequest;
-import com.leavesync.entity.Team;
-import com.leavesync.entity.User;
+import com.leavesync.entity.*;
 import com.leavesync.enums.LeaveStatus;
 import com.leavesync.enums.Role;
 import com.leavesync.exception.*;
@@ -52,6 +49,9 @@ public class UserServiceTest {
 
     @Mock
     private LeaveRequestRepository leaveRequestRepository;
+
+    @Mock
+    private LeaveTypeRepository leaveTypeRepository;
 
     @Mock
     private AuditLogRepository auditLogRepository;
@@ -560,6 +560,10 @@ public class UserServiceTest {
                 eq(userId), eq(LeaveStatus.APPROVED), any(LocalDate.class)
         )).thenReturn(List.of(leaveRequest2));
 
+        LeaveType leaveType =  new LeaveType();
+        leaveType.setRequiresBalanceTracking(false);
+        when(leaveTypeRepository.findById(any())).thenReturn(Optional.of(leaveType));
+
         when(userRepository.save(any(User.class))).thenReturn(user);
 
         userService.deactivateUser(userId);
@@ -599,4 +603,153 @@ public class UserServiceTest {
         User saved = captor.getValue();
         assertThat(saved.isActive()).isFalse();
     }
+
+    @Test
+    void deactivateUser_shouldDecreasePendingDays_whenUnactionedRequestCancelled() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID leaveTypeId = UUID.randomUUID();
+        LeaveRequest request = new LeaveRequest();
+        request.setUserId(userId);
+        request.setLeaveTypeId(leaveTypeId);
+        request.setStatus(LeaveStatus.PENDING);
+        request.setStartDate(LocalDate.now());
+        request.setTotalWorkingDays(new BigDecimal("3"));
+
+        when(leaveRequestRepository.findByUserIdAndStatusIn(
+                userId, List.of(LeaveStatus.PENDING, LeaveStatus.ESCALATED, LeaveStatus.REROUTED_TO_HR)
+        )).thenReturn(List.of(request));
+        when(leaveRequestRepository.findByUserIdAndStatusAndEndDateGreaterThanEqual(
+                eq(userId), eq(LeaveStatus.APPROVED), any(LocalDate.class)
+        )).thenReturn(List.of());
+
+        LeaveType leaveType = new LeaveType();
+        leaveType.setRequiresBalanceTracking(true);
+        when(leaveTypeRepository.findById(leaveTypeId)).thenReturn(Optional.of(leaveType));
+
+        LeaveBalance balance = new LeaveBalance();
+        balance.setPendingDays(new BigDecimal("5"));
+        when(leaveBalanceRepository.findByUserIdAndYear(userId, request.getStartDate().getYear()))
+                .thenReturn(Optional.of(balance));
+
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        userService.deactivateUser(userId);
+
+        ArgumentCaptor<LeaveBalance> captor = ArgumentCaptor.forClass(LeaveBalance.class);
+        verify(leaveBalanceRepository).save(captor.capture());
+
+        assertThat(captor.getValue()).isNotNull();
+        assertThat(captor.getValue().getPendingDays()).isEqualByComparingTo("2");
+    }
+
+    @Test
+    void deactivateUser_shouldDecreaseLeaveUsed_whenApprovedFutureRequestCancelled() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID leaveTypeId = UUID.randomUUID();
+        LeaveRequest request = new LeaveRequest();
+        request.setUserId(userId);
+        request.setLeaveTypeId(leaveTypeId);
+        request.setStatus(LeaveStatus.APPROVED);
+        request.setStartDate(LocalDate.now().plusDays(4));
+        request.setTotalWorkingDays(new BigDecimal("6"));
+
+        when(leaveRequestRepository.findByUserIdAndStatusIn(
+                userId, List.of(LeaveStatus.PENDING, LeaveStatus.ESCALATED, LeaveStatus.REROUTED_TO_HR)
+        )).thenReturn(List.of());
+        when(leaveRequestRepository.findByUserIdAndStatusAndEndDateGreaterThanEqual(
+                eq(userId), eq(LeaveStatus.APPROVED), any(LocalDate.class)
+        )).thenReturn(List.of(request));
+
+        LeaveType leaveType = new LeaveType();
+        leaveType.setRequiresBalanceTracking(true);
+        when(leaveTypeRepository.findById(leaveTypeId)).thenReturn(Optional.of(leaveType));
+
+        LeaveBalance balance = new LeaveBalance();
+        balance.setLeaveUsed(new BigDecimal("15"));
+        when(leaveBalanceRepository.findByUserIdAndYear(userId, request.getStartDate().getYear()))
+                .thenReturn(Optional.of(balance));
+
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        userService.deactivateUser(userId);
+
+        ArgumentCaptor<LeaveBalance> captor = ArgumentCaptor.forClass(LeaveBalance.class);
+        verify(leaveBalanceRepository).save(captor.capture());
+
+        assertThat(captor.getValue()).isNotNull();
+        assertThat(captor.getValue().getLeaveUsed()).isEqualByComparingTo("9");
+    }
+
+    @Test
+    void deactivateUser_shouldNotTouchBalance_whenLeaveTypeDoesNotRequireBalanceTracking() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID leaveTypeId = UUID.randomUUID();
+        LeaveRequest request = new LeaveRequest();
+        request.setUserId(userId);
+        request.setLeaveTypeId(leaveTypeId);
+        request.setStatus(LeaveStatus.PENDING);
+        request.setStartDate(LocalDate.now());
+        request.setTotalWorkingDays(new BigDecimal("3"));
+
+        when(leaveRequestRepository.findByUserIdAndStatusIn(
+                userId, List.of(LeaveStatus.PENDING, LeaveStatus.ESCALATED, LeaveStatus.REROUTED_TO_HR)
+        )).thenReturn(List.of(request));
+        when(leaveRequestRepository.findByUserIdAndStatusAndEndDateGreaterThanEqual(
+                eq(userId), eq(LeaveStatus.APPROVED), any(LocalDate.class)
+        )).thenReturn(List.of());
+
+        LeaveType leaveType = new LeaveType();
+        leaveType.setRequiresBalanceTracking(false);
+        when(leaveTypeRepository.findById(leaveTypeId)).thenReturn(Optional.of(leaveType));
+
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        userService.deactivateUser(userId);
+
+        verify(leaveBalanceRepository, never()).save(any(LeaveBalance.class));
+    }
+
+    @Test
+    void deactivateUser_shouldLookupBalanceByRequestStartYear_notCurrentYear() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UUID leaveTypeId = UUID.randomUUID();
+        LeaveRequest request = new LeaveRequest();
+        request.setUserId(userId);
+        request.setLeaveTypeId(leaveTypeId);
+        request.setStatus(LeaveStatus.PENDING);
+        request.setStartDate(LocalDate.now().plusYears(1));
+        request.setTotalWorkingDays(new BigDecimal("3"));
+
+        when(leaveRequestRepository.findByUserIdAndStatusIn(
+                userId, List.of(LeaveStatus.PENDING, LeaveStatus.ESCALATED, LeaveStatus.REROUTED_TO_HR)
+        )).thenReturn(List.of(request));
+        when(leaveRequestRepository.findByUserIdAndStatusAndEndDateGreaterThanEqual(
+                eq(userId), eq(LeaveStatus.APPROVED), any(LocalDate.class)
+        )).thenReturn(List.of());
+
+        LeaveType leaveType = new LeaveType();
+        leaveType.setRequiresBalanceTracking(true);
+        when(leaveTypeRepository.findById(leaveTypeId)).thenReturn(Optional.of(leaveType));
+
+        LeaveBalance balance = new LeaveBalance();
+        balance.setYear(LocalDate.now().getYear() + 1);
+        balance.setPendingDays(new BigDecimal("5"));
+        when(leaveBalanceRepository.findByUserIdAndYear(userId, request.getStartDate().getYear()))
+                .thenReturn(Optional.of(balance));
+
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        userService.deactivateUser(userId);
+
+        ArgumentCaptor<LeaveBalance> captor = ArgumentCaptor.forClass(LeaveBalance.class);
+        verify(leaveBalanceRepository).save(captor.capture());
+
+        assertThat(captor.getValue()).isNotNull();
+        assertThat(captor.getValue().getYear()).isEqualTo(LocalDate.now().getYear() + 1);
+    }
+
 }
