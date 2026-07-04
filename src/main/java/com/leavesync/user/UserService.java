@@ -24,7 +24,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +36,7 @@ public class UserService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final LeaveRequestRepository leaveRequestRepository;
+    private final LeaveTypeRepository leaveTypeRepository;
     private final AuditLogRepository auditLogRepository;
     private final LeaveBalanceRepository leaveBalanceRepository;
     private final TeamRepository teamRepository;
@@ -237,26 +237,23 @@ public class UserService {
                 List.of(LeaveStatus.PENDING, LeaveStatus.ESCALATED, LeaveStatus.REROUTED_TO_HR)
         );
 
-        List<LeaveRequest> approvedRequest = leaveRequestRepository
+        List<LeaveRequest> upcomingApprovedRequest = leaveRequestRepository
                 .findByUserIdAndStatusAndEndDateGreaterThanEqual(userId, LeaveStatus.APPROVED, LocalDate.now());
 
-        List<LeaveRequest> requestToCancel = new ArrayList<>();
-        requestToCancel.addAll(unActionedRequest);
-        requestToCancel.addAll(approvedRequest);
+        for (LeaveRequest request : unActionedRequest) {
+            findTrackedBalance(request).ifPresent(balance -> {
+                balance.setPendingDays(balance.getPendingDays().subtract(request.getTotalWorkingDays()));
+                leaveBalanceRepository.save(balance);
+            });
+            cancelRequestAndAudit(request);
+        }
 
-        for (LeaveRequest request : requestToCancel) {
-            LeaveStatus previousStatus = request.getStatus();
-            request.setStatus(LeaveStatus.CANCELLED);
-            leaveRequestRepository.save(request);
-
-            AuditLog auditLog = new AuditLog();
-            auditLog.setLeaveRequestId(request.getId());
-            auditLog.setPreviousStatus(previousStatus);
-            auditLog.setNewStatus(LeaveStatus.CANCELLED);
-            auditLog.setAssignedTo(null);
-            auditLog.setActionedBy(null);
-            auditLog.setNotes("User account deactivated");
-            auditLogRepository.save(auditLog);
+        for (LeaveRequest request : upcomingApprovedRequest) {
+            findTrackedBalance(request).ifPresent(balance -> {
+                balance.setLeaveUsed(balance.getLeaveUsed().subtract(request.getTotalWorkingDays()));
+                leaveBalanceRepository.save(balance);
+            });
+            cancelRequestAndAudit(request);
         }
 
         user.setActive(false);
@@ -283,6 +280,32 @@ public class UserService {
                 .multiply(new BigDecimal("2"))
                 .setScale(0, RoundingMode.CEILING)
                 .divide(new BigDecimal("2"), 1, RoundingMode.UNNECESSARY);
+    }
+
+    private Optional<LeaveBalance> findTrackedBalance(LeaveRequest request) {
+        LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveType", "id", request.getLeaveTypeId().toString()));
+
+        if (!leaveType.isRequiresBalanceTracking()) {
+            return Optional.empty();
+        }
+
+        return leaveBalanceRepository.findByUserIdAndYear(request.getUserId(), request.getStartDate().getYear());
+    }
+
+    private void cancelRequestAndAudit(LeaveRequest request) {
+        LeaveStatus previousStatus = request.getStatus();
+        request.setStatus(LeaveStatus.CANCELLED);
+        leaveRequestRepository.save(request);
+
+        AuditLog auditLog = new AuditLog();
+        auditLog.setLeaveRequestId(request.getId());
+        auditLog.setPreviousStatus(previousStatus);
+        auditLog.setNewStatus(LeaveStatus.CANCELLED);
+        auditLog.setAssignedTo(null);
+        auditLog.setActionedBy(null);
+        auditLog.setNotes("User account deactivated");
+        auditLogRepository.save(auditLog);
     }
 
 }
