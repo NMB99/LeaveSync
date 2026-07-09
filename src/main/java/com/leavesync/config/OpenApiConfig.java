@@ -34,10 +34,12 @@ public class OpenApiConfig {
                                 Handles leave requests, approvals, balance tracking, user & team management, year-end processing and reporting.
                                 
                                 **Visitor credentials (HR role):**
-                                - Email: `visitor@leavesync.com`
+                                - Email: `visitor@builtmeup.dev`
                                 - Password: `Visitor@1234`
                                 
                                 Use `POST /api/auth/login` to get JWT token, then click **Authorise** and paste it.
+                                
+                                **Note on email:** endpoints that send invite/reset emails (`POST /api/users`, `POST /api/users/forgot-password`) require a real, reachable email address in the request body. To test these flows, use your own email address or a temporary inbox service (e.g. https://temp-mail.org).
                                 
                                 **GitHub**: https://github.com/NMB99/LeaveSync
                                 
