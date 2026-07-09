@@ -25,8 +25,10 @@ Harlow Digital is a remote-first UK company with about 200 employees. Right now 
 **Live:** [Swagger UI](https://leavesync-api-60lv.onrender.com/swagger-ui.html)
 
 **Visitor credentials (HR role):**
-- Email: `visitor@leavesync.com`
+- Email: `visitor@builtmeup.dev`
 - Password: `Visitor@1234`
+
+> Endpoints that send email (user creation, password reset) require a real, reachable email address — use your own or a temporary inbox service (e.g. temp-mail.org).
 
 Login via `POST /api/auth/login`, click **Authorize**, paste the token.
 
